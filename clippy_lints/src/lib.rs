@@ -211,6 +211,7 @@ pub mod format;
 pub mod formatting;
 pub mod functions;
 pub mod get_last_with_len;
+pub mod hacspec;
 pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_let_some_result;
@@ -548,6 +549,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &functions::TOO_MANY_ARGUMENTS,
         &functions::TOO_MANY_LINES,
         &get_last_with_len::GET_LAST_WITH_LEN,
+        &hacspec::HACSPEC,
         &identity_conversion::IDENTITY_CONVERSION,
         &identity_op::IDENTITY_OP,
         &if_let_some_result::IF_LET_SOME_RESULT,
@@ -1006,6 +1008,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let max_struct_bools = conf.max_struct_bools;
     store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
+    // store.register_early_pass(|| box hacspec::Hacspec);
+    store.register_late_pass(|| box hacspec::Hacspec);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),

@@ -199,6 +199,7 @@ pub mod format;
 pub mod formatting;
 pub mod functions;
 pub mod get_last_with_len;
+pub mod hacspec;
 pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_not_else;
@@ -522,6 +523,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &functions::TOO_MANY_ARGUMENTS,
         &functions::TOO_MANY_LINES,
         &get_last_with_len::GET_LAST_WITH_LEN,
+        &hacspec::HACSPEC,
         &identity_conversion::IDENTITY_CONVERSION,
         &identity_op::IDENTITY_OP,
         &if_not_else::IF_NOT_ELSE,
@@ -951,6 +953,8 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
     store.register_late_pass(|| box exit::Exit);
     store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
+    // store.register_early_pass(|| box hacspec::Hacspec);
+    store.register_late_pass(|| box hacspec::Hacspec);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),

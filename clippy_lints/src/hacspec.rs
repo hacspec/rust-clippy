@@ -2,7 +2,6 @@ use crate::utils::*;
 use rustc::hir;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
-use syntax::*;
 use syntax_pos::{
     hygiene::{DesugaringKind, ExpnKind},
     Span,
@@ -37,7 +36,7 @@ const ALLOWED_PATHS: &'static [&'static [&'static str]] = &[
     &["{{root}}", "std", "ops", "Range"],
 ];
 
-fn is_allowed(queried_use: &hir::HirVec<hir::PathSegment>) -> bool {
+fn allowed_path(queried_use: &hir::HirVec<hir::PathSegment>) -> bool {
     ALLOWED_PATHS
         .iter()
         .find(|&allowed_use| {
@@ -51,13 +50,22 @@ fn is_allowed(queried_use: &hir::HirVec<hir::PathSegment>) -> bool {
         .is_some()
 }
 
+fn allowed_type(typ: &hir::Ty) -> bool {
+    match &typ.kind {
+        hir::TyKind::Array(ref typ, _) => allowed_type(typ),
+        hir::TyKind::Tup(typs) => typs.iter().all(|typ| allowed_type(typ)),
+        hir::TyKind::Path(_) => true,
+        _ => false,
+    }
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
     fn check_path(&mut self, cx: &LateContext<'a, 'tcx>, path: &'tcx hir::Path, _: hir::HirId) {
         // Items used in the code are whitelisted
-        if in_macro(path.span) || in_external_macro(cx.sess(), path.span) {
+        if in_external_macro(cx.sess(), path.span) {
             return ();
         };
-        if path.segments.len() == 1 || is_allowed(&path.segments) {
+        if path.segments.len() == 1 || allowed_path(&path.segments) {
             // Paths of len 1 correspond to items inside the crate, except when used in imports
             return ();
         };
@@ -69,13 +77,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         // only check top level `use` statements
         for item in &m.item_ids {
             let item = map.expect_item(item.id);
-            if in_macro(span) {
+            if in_external_macro(cx.sess(), span) {
                 continue;
             };
             if let hir::ItemKind::Use(ref path, _) = item.kind {
                 // Even though the check_path also checks the import path, we have to restricts
                 // imports path of lenght 1 that are not allowed
-                if is_allowed(&path.segments) {
+                if allowed_path(&path.segments) {
                     continue;
                 };
                 span_lint(cx, HACSPEC, item.span, &format!("Unauthorized item {}", path))
@@ -84,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
     }
 
     fn check_param(&mut self, cx: &LateContext<'a, 'tcx>, param: &'tcx hir::Param) {
-        if in_macro(param.span) {
+        if in_external_macro(cx.sess(), param.span) {
             return ();
         };
         // Function parameters cannot be borrowed
@@ -114,7 +122,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         span: Span,
         _: hir::HirId,
     ) {
-        if in_macro(span) {
+        if in_external_macro(cx.sess(), span) {
             return ();
         };
         // The types of function parameters cannot be references
@@ -131,8 +139,30 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         }
     }
 
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
+        if in_external_macro(cx.sess(), item.span) {
+            return ();
+        }
+        match &item.kind {
+            hir::ItemKind::TyAlias(ref typ, _) | hir::ItemKind::Const(ref typ, _) => {
+                if !allowed_type(typ) {
+                    span_lint(
+                        cx,
+                        HACSPEC,
+                        item.span,
+                        &format!("[HACSPEC] Unauthorized type for alias"),
+                    )
+                }
+            },
+            hir::ItemKind::ExternCrate(_) => (),
+            hir::ItemKind::Use(_, _) => (),
+            hir::ItemKind::Fn(_, _, _) => (),
+            _ => span_lint(cx, HACSPEC, item.span, &format!("[HACSPEC] Unauthorized item")),
+        }
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &hir::Expr) {
-        if in_macro(expr.span) || in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return ();
         }
         // Restricts the items used to the whitelist
@@ -150,7 +180,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
             hir::ExprKind::Binary(_, _, _) => (),
             hir::ExprKind::Unary(_, _) => (),
             hir::ExprKind::Lit(_) => (),
-            hir::ExprKind::Type(_, _) => (),
+            hir::ExprKind::Type(_, typ) => {
+                if !allowed_type(typ) {
+                    span_lint(
+                        cx,
+                        HACSPEC,
+                        expr.span,
+                        &format!("[HACSPEC] Unauthorized type for expression"),
+                    )
+                }
+            },
             hir::ExprKind::Loop(_, _, _) => (),
             hir::ExprKind::Match(_, _, _) => (),
             hir::ExprKind::Assign(_, _) => (),

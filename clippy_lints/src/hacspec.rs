@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::*;
-use syntax_pos::{symbol::Symbol, Span};
+use syntax_pos::Span;
 
 declare_clippy_lint! {
     pub HACSPEC,
@@ -13,7 +13,22 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Hacspec => [HACSPEC]);
 
-const ALLOWED_USES: &'static [&'static [&'static str]] = &[&["hacspec"]];
+const ALLOWED_USES: &'static [&'static [&'static str]] = &[
+    &["hacspec"],
+    &["num"],
+    &["std"],
+    &["std", "num", "ParseIntError"],
+    &["std", "ops"],
+    &["std", "cmp", "min"],
+    &["std", "cmp", "PartialEq"],
+    &["std", "fmt"],
+    &["uint"],
+    &["uint", "natmod_p"],
+    &["uint", "traits"],
+    &["uint", "uint_n"],
+    &["wrapping_arithmetic", "wrappit"],
+    &["{{root}}", "std", "prelude", "v1"]
+];
 
 fn is_allowed(queried_use: &hir::HirVec<hir::PathSegment>) -> bool {
     ALLOWED_USES
@@ -39,7 +54,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
                 continue;
             };
             if let hir::ItemKind::Use(ref path, _) = item.kind {
-                if is_allowed(&path.segments) { continue; };
+                if is_allowed(&path.segments) {
+                    continue;
+                };
                 span_lint(
                     cx,
                     HACSPEC,

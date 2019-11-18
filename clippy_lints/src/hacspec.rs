@@ -1,9 +1,12 @@
 use crate::utils::*;
 use rustc::hir;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::*;
-use syntax_pos::Span;
+use syntax_pos::{
+    hygiene::{DesugaringKind, ExpnKind},
+    Span,
+};
 
 declare_clippy_lint! {
     pub HACSPEC,
@@ -30,6 +33,8 @@ const ALLOWED_PATHS: &'static [&'static [&'static str]] = &[
     &["{{root}}", "std", "prelude", "v1"],
     &["{{root}}", "std", "iter", "Iterator", "next"],
     &["{{root}}", "std", "iter", "IntoIterator", "into_iter"],
+    &["{{root}}", "std", "option", "Option"],
+    &["{{root}}", "std", "ops", "Range"],
 ];
 
 fn is_allowed(queried_use: &hir::HirVec<hir::PathSegment>) -> bool {
@@ -47,27 +52,33 @@ fn is_allowed(queried_use: &hir::HirVec<hir::PathSegment>) -> bool {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
+    fn check_path(&mut self, cx: &LateContext<'a, 'tcx>, path: &'tcx hir::Path, _: hir::HirId) {
+        // Items used in the code are whitelisted
+        if in_macro(path.span) || in_external_macro(cx.sess(), path.span) {
+            return ();
+        };
+        if path.segments.len() == 1 || is_allowed(&path.segments) {
+            // Paths of len 1 correspond to items inside the crate, except when used in imports
+            return ();
+        };
+        span_lint(cx, HACSPEC, path.span, &format!("[HACSPEC] Unauthorized item {}", path))
+    }
+
     fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx hir::Mod, span: Span, _: hir::HirId) {
         let map = cx.tcx.hir();
-        // Ensures an import whitelist
+        // only check top level `use` statements
         for item in &m.item_ids {
             let item = map.expect_item(item.id);
             if in_macro(span) {
                 continue;
             };
             if let hir::ItemKind::Use(ref path, _) = item.kind {
+                // Even though the check_path also checks the import path, we have to restricts
+                // imports path of lenght 1 that are not allowed
                 if is_allowed(&path.segments) {
                     continue;
                 };
-                span_lint(
-                    cx,
-                    HACSPEC,
-                    item.span,
-                    &format!(
-                        "[HACSPEC] Cannot use crate {:#?}",
-                        path.segments.iter().map(|x| x.ident).collect::<Vec<ast::Ident>>()
-                    ),
-                )
+                span_lint(cx, HACSPEC, item.span, &format!("Unauthorized item {}", path))
             }
         }
     }
@@ -121,22 +132,49 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &hir::Expr) {
-        if in_macro(expr.span) {
+        if in_macro(expr.span) || in_external_macro(cx.sess(), expr.span) {
             return ();
-        };
+        }
         // Restricts the items used to the whitelist
         match &expr.kind {
-            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-                if path.segments.len() != 1 && !is_allowed(&path.segments) {
-                    span_lint(
-                        cx,
-                        HACSPEC,
-                        expr.span,
-                        &format!("Number of segments: {:?}", path.segments),
-                    )
+            hir::ExprKind::AddrOf(_, _) => {
+                if expr.span.from_expansion() {
+                    match expr.span.ctxt().outer_expn_data().kind {
+                        // Loop ranges are desugared with an mutable addrOf expression so we
+                        // authorize them
+                        ExpnKind::Desugaring(DesugaringKind::ForLoop) => (),
+                        _ => span_lint(cx, HACSPEC, expr.span, &format!("[HACSPEC] Unauthorized expression")),
+                    }
                 }
             },
-            _ => (),
+            hir::ExprKind::Binary(_, _, _) => (),
+            hir::ExprKind::Unary(_, _) => (),
+            hir::ExprKind::Lit(_) => (),
+            hir::ExprKind::Type(_, _) => (),
+            hir::ExprKind::Loop(_, _, _) => (),
+            hir::ExprKind::Match(_, _, _) => (),
+            hir::ExprKind::Assign(_, _) => (),
+            hir::ExprKind::AssignOp(_, _, _) => (),
+            hir::ExprKind::Break(_, _) => (),
+            hir::ExprKind::Array(_)
+            | hir::ExprKind::Call(_, _)
+            | hir::ExprKind::MethodCall(_, _, _)
+            | hir::ExprKind::Tup(_)
+            | hir::ExprKind::Block(_, _)
+            | hir::ExprKind::Field(_, _)
+            | hir::ExprKind::Index(_, _)
+            | hir::ExprKind::Struct(_, _, _)
+            | hir::ExprKind::DropTemps(_)
+            | hir::ExprKind::Path(_)
+            | hir::ExprKind::Ret(_) => (),
+            hir::ExprKind::Cast(_, _)
+            | hir::ExprKind::Box(_)
+            | hir::ExprKind::Closure(_, _, _, _, _)
+            | hir::ExprKind::Continue(_)
+            | hir::ExprKind::InlineAsm(_, _, _)
+            | hir::ExprKind::Repeat(_, _)
+            | hir::ExprKind::Yield(_, _)
+            | hir::ExprKind::Err => span_lint(cx, HACSPEC, expr.span, &format!("[HACSPEC] Unauthorized expression")),
         }
     }
 }

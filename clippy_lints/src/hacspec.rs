@@ -109,7 +109,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
                 }
                 true
             },
-            _ => true,
+            _ => {
+                span_lint(cx, HACSPEC, pat.span, &format!("[HACSPEC] Wrong parameter format"));
+                false
+            },
         })
     }
 
@@ -127,14 +130,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         };
         // The types of function parameters cannot be references
         for param in sig.inputs.iter() {
-            match &param.kind {
-                hir::TyKind::Ptr(_) | hir::TyKind::Rptr(_, _) => span_lint(
+            if !allowed_type(param) {
+                span_lint(
                     cx,
                     HACSPEC,
                     param.span,
-                    &format!("[HACSPEC] Function parameters cannot be references"),
-                ),
-                _ => (),
+                    &format!("[HACSPEC] Unsupported type"),
+                )
             }
         }
     }

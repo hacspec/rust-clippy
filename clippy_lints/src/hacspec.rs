@@ -34,6 +34,9 @@ const ALLOWED_PATHS: &'static [&'static [&'static str]] = &[
     &["{{root}}", "std", "iter", "IntoIterator", "into_iter"],
     &["{{root}}", "std", "option", "Option"],
     &["{{root}}", "std", "ops", "Range"],
+    &["{{root}}", "std", "ops", "RangeFull"],
+    &["contracts"],
+    &["contracts", "pre"]
 ];
 
 fn allowed_path(queried_use: &hir::HirVec<hir::PathSegment>) -> bool {
@@ -131,12 +134,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         // The types of function parameters cannot be references
         for param in sig.inputs.iter() {
             if !allowed_type(param) {
-                span_lint(
-                    cx,
-                    HACSPEC,
-                    param.span,
-                    &format!("[HACSPEC] Unsupported type"),
-                )
+                span_lint(cx, HACSPEC, param.span, &format!("[HACSPEC] Unsupported type"))
             }
         }
     }
@@ -157,6 +155,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
                 }
             },
             hir::ItemKind::ExternCrate(_) => (),
+            hir::ItemKind::Static(typ, m, _) => {
+                if !allowed_type(typ) || *m == hir::Mutability::Mutable {
+                    span_lint(cx, HACSPEC, item.span, &format!("[HACSPEC] Unauthorized static item"))
+                }
+            },
             hir::ItemKind::Use(_, _) => (),
             hir::ItemKind::Fn(_, _, _) => (),
             _ => span_lint(cx, HACSPEC, item.span, &format!("[HACSPEC] Unauthorized item")),
@@ -175,7 +178,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
                         // Loop ranges are desugared with an mutable addrOf expression so we
                         // authorize them
                         ExpnKind::Desugaring(DesugaringKind::ForLoop) => (),
-                        _ => span_lint(cx, HACSPEC, expr.span, &format!("[HACSPEC] Unauthorized expression")),
+                        _ => span_lint(
+                            cx,
+                            HACSPEC,
+                            expr.span,
+                            &format!("[HACSPEC] Unauthorized reference expression"),
+                        ),
                     }
                 }
             },
@@ -197,6 +205,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
             hir::ExprKind::Assign(_, _) => (),
             hir::ExprKind::AssignOp(_, _, _) => (),
             hir::ExprKind::Break(_, _) => (),
+            hir::ExprKind::Repeat(_, _) => (),
+            /* We should forbid them and make them explicit using secret_integers
+             * instead */
+            hir::ExprKind::Cast(_, _) => (),
             hir::ExprKind::Array(_)
             | hir::ExprKind::Call(_, _)
             | hir::ExprKind::MethodCall(_, _, _)
@@ -208,13 +220,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
             | hir::ExprKind::DropTemps(_)
             | hir::ExprKind::Path(_)
             | hir::ExprKind::Ret(_) => (),
-            hir::ExprKind::Cast(_, _)
-            | hir::ExprKind::Box(_)
+            hir::ExprKind::Yield(_, _)
             | hir::ExprKind::Closure(_, _, _, _, _)
+            | hir::ExprKind::Box(_)
             | hir::ExprKind::Continue(_)
             | hir::ExprKind::InlineAsm(_, _, _)
-            | hir::ExprKind::Repeat(_, _)
-            | hir::ExprKind::Yield(_, _)
             | hir::ExprKind::Err => span_lint(cx, HACSPEC, expr.span, &format!("[HACSPEC] Unauthorized expression")),
         }
     }

@@ -5,13 +5,14 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
-use rustc::traits;
-use rustc::traits::misc::can_type_implement_copy;
-use rustc::ty::{self, RegionKind, TypeFoldable};
+use rustc::ty::{self, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::*;
+use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, ItemKind, Node, PatKind, QPath, TyKind};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits;
+use rustc_infer::traits::misc::can_type_implement_copy;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{Span, Symbol};
@@ -171,7 +172,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 (
                     preds.iter().any(|t| t.def_id() == borrow_trait),
                     !preds.is_empty() && {
-                        let ty_empty_region = cx.tcx.mk_imm_ref(&RegionKind::ReEmpty(ty::UniverseIndex::ROOT), ty);
+                        let ty_empty_region = cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_root_empty, ty);
                         preds.iter().all(|t| {
                             let ty_params = &t
                                 .skip_binder()

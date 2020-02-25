@@ -4,7 +4,9 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::SymbolStr;
 use std::cmp::Ordering;
-use syntax::ast::*;
+use syntax::ast::{
+    Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Ident, Item, ItemKind, Local, Mac, Pat, PatKind,
+};
 use syntax::attr;
 use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
 
@@ -352,13 +354,13 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 
 impl EarlyLintPass for NonExpressiveNames {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Fn(ref sig, _, Some(ref blk)) = item.kind {
+        if let ItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
 
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &AssocItem) {
-        if let AssocItemKind::Fn(ref sig, Some(ref blk)) = item.kind {
+        if let AssocItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }

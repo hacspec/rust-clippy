@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 355] = [
+pub const ALL_LINTS: [Lint; 358] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -460,7 +460,7 @@ pub const ALL_LINTS: [Lint; 355] = [
         group: "pedantic",
         desc: "use items that import all variants of an enum",
         deprecation: None,
-        module: "enum_glob_use",
+        module: "wildcard_imports",
     },
     Lint {
         name: "enum_variant_names",
@@ -495,7 +495,7 @@ pub const ALL_LINTS: [Lint; 355] = [
         group: "style",
         desc: "excessive precision for float literal",
         deprecation: None,
-        module: "excessive_precision",
+        module: "float_literal",
     },
     Lint {
         name: "exit",
@@ -750,6 +750,13 @@ pub const ALL_LINTS: [Lint; 355] = [
         module: "implicit_return",
     },
     Lint {
+        name: "imprecise_flops",
+        group: "nursery",
+        desc: "usage of imprecise floating point operations",
+        deprecation: None,
+        module: "floating_point_arithmetic",
+    },
+    Lint {
         name: "inconsistent_digit_grouping",
         group: "style",
         desc: "integer literals with digits grouped inconsistently",
@@ -1002,6 +1009,13 @@ pub const ALL_LINTS: [Lint; 355] = [
         module: "booleans",
     },
     Lint {
+        name: "lossy_float_literal",
+        group: "restriction",
+        desc: "lossy whole number float literals",
+        deprecation: None,
+        module: "float_literal",
+    },
+    Lint {
         name: "main_recursion",
         group: "style",
         desc: "recursion using the entrypoint",
@@ -1014,13 +1028,6 @@ pub const ALL_LINTS: [Lint; 355] = [
         desc: "manually copying items between slices",
         deprecation: None,
         module: "loops",
-    },
-    Lint {
-        name: "manual_mul_add",
-        group: "nursery",
-        desc: "Using `a.mul_add(b, c)` for floating points has higher numerical precision than `a * b + c`",
-        deprecation: None,
-        module: "mul_add",
     },
     Lint {
         name: "manual_saturating_arithmetic",
@@ -1954,6 +1961,13 @@ pub const ALL_LINTS: [Lint; 355] = [
         module: "excessive_bools",
     },
     Lint {
+        name: "suboptimal_flops",
+        group: "nursery",
+        desc: "usage of sub-optimal floating point operations",
+        deprecation: None,
+        module: "floating_point_arithmetic",
+    },
+    Lint {
         name: "suspicious_arithmetic_impl",
         group: "correctness",
         desc: "suspicious use of operators in impl of arithmetic trait",
@@ -2228,7 +2242,7 @@ pub const ALL_LINTS: [Lint; 355] = [
     },
     Lint {
         name: "unneeded_field_pattern",
-        group: "style",
+        group: "restriction",
         desc: "struct fields bound to a wildcard instead of using `..`",
         deprecation: None,
         module: "misc_early",
@@ -2407,6 +2421,13 @@ pub const ALL_LINTS: [Lint; 355] = [
         desc: "a wildcard enum match arm using `_`",
         deprecation: None,
         module: "matches",
+    },
+    Lint {
+        name: "wildcard_imports",
+        group: "pedantic",
+        desc: "lint `use _::*` statements",
+        deprecation: None,
+        module: "wildcard_imports",
     },
     Lint {
         name: "wildcard_in_or_patterns",

@@ -33,6 +33,8 @@ extern crate rustc_hir;
 #[allow(unused_extern_crates)]
 extern crate rustc_index;
 #[allow(unused_extern_crates)]
+extern crate rustc_infer;
+#[allow(unused_extern_crates)]
 extern crate rustc_lexer;
 #[allow(unused_extern_crates)]
 extern crate rustc_lint;
@@ -195,7 +197,6 @@ pub mod else_if_without_else;
 pub mod empty_enum;
 pub mod entry;
 pub mod enum_clike;
-pub mod enum_glob_use;
 pub mod enum_variants;
 pub mod eq_op;
 pub mod erasing_op;
@@ -203,10 +204,11 @@ pub mod escape;
 pub mod eta_reduction;
 pub mod eval_order_dependence;
 pub mod excessive_bools;
-pub mod excessive_precision;
 pub mod exit;
 pub mod explicit_write;
 pub mod fallible_impl_from;
+pub mod float_literal;
+pub mod floating_point_arithmetic;
 pub mod format;
 pub mod formatting;
 pub mod functions;
@@ -248,7 +250,6 @@ pub mod missing_const_for_fn;
 pub mod missing_doc;
 pub mod missing_inline;
 pub mod modulo_arithmetic;
-pub mod mul_add;
 pub mod multiple_crate_versions;
 pub mod mut_key;
 pub mod mut_mut;
@@ -310,6 +311,7 @@ pub mod unwrap;
 pub mod use_self;
 pub mod vec;
 pub mod wildcard_dependencies;
+pub mod wildcard_imports;
 pub mod write;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
@@ -518,7 +520,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &empty_enum::EMPTY_ENUM,
         &entry::MAP_ENTRY,
         &enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
-        &enum_glob_use::ENUM_GLOB_USE,
         &enum_variants::ENUM_VARIANT_NAMES,
         &enum_variants::MODULE_INCEPTION,
         &enum_variants::MODULE_NAME_REPETITIONS,
@@ -533,10 +534,13 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         &excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS,
         &excessive_bools::STRUCT_EXCESSIVE_BOOLS,
-        &excessive_precision::EXCESSIVE_PRECISION,
         &exit::EXIT,
         &explicit_write::EXPLICIT_WRITE,
         &fallible_impl_from::FALLIBLE_IMPL_FROM,
+        &float_literal::EXCESSIVE_PRECISION,
+        &float_literal::LOSSY_FLOAT_LITERAL,
+        &floating_point_arithmetic::IMPRECISE_FLOPS,
+        &floating_point_arithmetic::SUBOPTIMAL_FLOPS,
         &format::USELESS_FORMAT,
         &formatting::POSSIBLE_MISSING_COMMA,
         &formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
@@ -690,7 +694,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
         &missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
         &modulo_arithmetic::MODULO_ARITHMETIC,
-        &mul_add::MANUAL_MUL_ADD,
         &multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
         &mut_key::MUTABLE_KEY_TYPE,
         &mut_mut::MUT_MUT,
@@ -812,6 +815,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &use_self::USE_SELF,
         &vec::USELESS_VEC,
         &wildcard_dependencies::WILDCARD_DEPENDENCIES,
+        &wildcard_imports::ENUM_GLOB_USE,
+        &wildcard_imports::WILDCARD_IMPORTS,
         &write::PRINTLN_EMPTY_STRING,
         &write::PRINT_LITERAL,
         &write::PRINT_STDOUT,
@@ -834,9 +839,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box types::Types::new(vec_box_size_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
     store.register_late_pass(|| box eq_op::EqOp);
-    store.register_late_pass(|| box enum_glob_use::EnumGlobUse);
     store.register_late_pass(|| box enum_clike::UnportableVariant);
-    store.register_late_pass(|| box excessive_precision::ExcessivePrecision);
+    store.register_late_pass(|| box float_literal::FloatLiteral);
     let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
     store.register_late_pass(move || box bit_mask::BitMask::new(verbose_bit_mask_threshold));
     store.register_late_pass(|| box ptr::Ptr);
@@ -965,7 +969,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box inherent_to_string::InherentToString);
     store.register_late_pass(|| box trait_bounds::TraitBounds);
     store.register_late_pass(|| box comparison_chain::ComparisonChain);
-    store.register_late_pass(|| box mul_add::MulAddCheck);
     store.register_late_pass(|| box mut_key::MutableKeyType);
     store.register_late_pass(|| box modulo_arithmetic::ModuloArithmetic);
     store.register_early_pass(|| box reference::DerefAddrOf);
@@ -999,6 +1002,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
     let array_size_threshold = conf.array_size_threshold;
     store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
+    store.register_late_pass(move || box floating_point_arithmetic::FloatingPointArithmetic);
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_early_pass(|| box utils::internal_lints::ProduceIce);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
@@ -1010,6 +1014,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
     // store.register_early_pass(|| box hacspec::Hacspec);
     store.register_late_pass(|| box hacspec::Hacspec);
+    store.register_late_pass(|| box wildcard_imports::WildcardImports);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1018,6 +1023,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&dbg_macro::DBG_MACRO),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
         LintId::of(&exit::EXIT),
+        LintId::of(&float_literal::LOSSY_FLOAT_LITERAL),
         LintId::of(&implicit_return::IMPLICIT_RETURN),
         LintId::of(&indexing_slicing::INDEXING_SLICING),
         LintId::of(&inherent_impl::MULTIPLE_INHERENT_IMPL),
@@ -1035,6 +1041,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::RESULT_UNWRAP_USED),
         LintId::of(&methods::WRONG_PUB_SELF_CONVENTION),
         LintId::of(&misc::FLOAT_CMP_CONST),
+        LintId::of(&misc_early::UNNEEDED_FIELD_PATTERN),
         LintId::of(&missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
         LintId::of(&missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS),
         LintId::of(&modulo_arithmetic::MODULO_ARITHMETIC),
@@ -1060,7 +1067,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&doc::DOC_MARKDOWN),
         LintId::of(&doc::MISSING_ERRORS_DOC),
         LintId::of(&empty_enum::EMPTY_ENUM),
-        LintId::of(&enum_glob_use::ENUM_GLOB_USE),
         LintId::of(&enum_variants::MODULE_NAME_REPETITIONS),
         LintId::of(&enum_variants::PUB_ENUM_VARIANT_NAMES),
         LintId::of(&eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS),
@@ -1104,15 +1110,17 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unicode::NON_ASCII_LITERAL),
         LintId::of(&unicode::UNICODE_NOT_NFC),
         LintId::of(&unused_self::UNUSED_SELF),
+        LintId::of(&wildcard_imports::ENUM_GLOB_USE),
+        LintId::of(&wildcard_imports::WILDCARD_IMPORTS),
     ]);
 
     store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
         LintId::of(&utils::internal_lints::CLIPPY_LINTS_INTERNAL),
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
+        LintId::of(&utils::internal_lints::DEFAULT_LINT),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
         LintId::of(&utils::internal_lints::OUTER_EXPN_EXPN_DATA),
         LintId::of(&utils::internal_lints::PRODUCE_ICE),
-        LintId::of(&utils::internal_lints::DEFAULT_LINT),
     ]);
 
     store.register_group(true, "clippy::all", Some("clippy"), vec![
@@ -1161,8 +1169,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&eta_reduction::REDUNDANT_CLOSURE),
         LintId::of(&eval_order_dependence::DIVERGING_SUB_EXPRESSION),
         LintId::of(&eval_order_dependence::EVAL_ORDER_DEPENDENCE),
-        LintId::of(&excessive_precision::EXCESSIVE_PRECISION),
         LintId::of(&explicit_write::EXPLICIT_WRITE),
+        LintId::of(&float_literal::EXCESSIVE_PRECISION),
         LintId::of(&format::USELESS_FORMAT),
         LintId::of(&formatting::POSSIBLE_MISSING_COMMA),
         LintId::of(&formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
@@ -1272,7 +1280,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc_early::MIXED_CASE_HEX_LITERALS),
         LintId::of(&misc_early::REDUNDANT_CLOSURE_CALL),
         LintId::of(&misc_early::REDUNDANT_PATTERN),
-        LintId::of(&misc_early::UNNEEDED_FIELD_PATTERN),
         LintId::of(&misc_early::UNNEEDED_WILDCARD_PATTERN),
         LintId::of(&misc_early::ZERO_PREFIXED_LITERAL),
         LintId::of(&mut_key::MUTABLE_KEY_TYPE),
@@ -1388,7 +1395,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&enum_variants::MODULE_INCEPTION),
         LintId::of(&eq_op::OP_REF),
         LintId::of(&eta_reduction::REDUNDANT_CLOSURE),
-        LintId::of(&excessive_precision::EXCESSIVE_PRECISION),
+        LintId::of(&float_literal::EXCESSIVE_PRECISION),
         LintId::of(&formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
         LintId::of(&formatting::SUSPICIOUS_ELSE_FORMATTING),
         LintId::of(&formatting::SUSPICIOUS_UNARY_OP_FORMATTING),
@@ -1436,7 +1443,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc_early::DUPLICATE_UNDERSCORE_ARGUMENT),
         LintId::of(&misc_early::MIXED_CASE_HEX_LITERALS),
         LintId::of(&misc_early::REDUNDANT_PATTERN),
-        LintId::of(&misc_early::UNNEEDED_FIELD_PATTERN),
         LintId::of(&mut_reference::UNNECESSARY_MUT_PASSED),
         LintId::of(&neg_multiply::NEG_MULTIPLY),
         LintId::of(&new_without_default::NEW_WITHOUT_DEFAULT),
@@ -1647,8 +1653,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
+        LintId::of(&floating_point_arithmetic::IMPRECISE_FLOPS),
+        LintId::of(&floating_point_arithmetic::SUBOPTIMAL_FLOPS),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
-        LintId::of(&mul_add::MANUAL_MUL_ADD),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
         LintId::of(&needless_borrow::NEEDLESS_BORROW),

@@ -27,7 +27,6 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::hir::map::Map;
 use rustc::traits;
-use rustc::traits::predicate_for_trait_def;
 use rustc::ty::{
     self,
     layout::{self, IntegerExt},
@@ -41,7 +40,12 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::Node;
-use rustc_hir::*;
+use rustc_hir::{
+    def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, HirId, ImplItem, ImplItemKind, Item, ItemKind,
+    MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
+};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::predicate_for_trait_def;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
@@ -51,7 +55,7 @@ use smallvec::SmallVec;
 use syntax::ast::{self, Attribute, LitKind};
 
 use crate::consts::{constant, Constant};
-use crate::reexport::*;
+use crate::reexport::Name;
 
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).
@@ -1288,17 +1292,19 @@ pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
 
 // Returns whether the type has #[must_use] attribute
 pub fn is_must_use_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use ty::TyKind::*;
     match ty.kind {
-        Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
-        Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),
-        Slice(ref ty) | Array(ref ty, _) | RawPtr(ty::TypeAndMut { ref ty, .. }) | Ref(_, ref ty, _) => {
+        ty::Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
+        ty::Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),
+        ty::Slice(ref ty)
+        | ty::Array(ref ty, _)
+        | ty::RawPtr(ty::TypeAndMut { ref ty, .. })
+        | ty::Ref(_, ref ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
             is_must_use_ty(cx, *ty)
         },
-        Tuple(ref substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
-        Opaque(ref def_id, _) => {
+        ty::Tuple(ref substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
+        ty::Opaque(ref def_id, _) => {
             for (predicate, _) in cx.tcx.predicates_of(*def_id).predicates {
                 if let ty::Predicate::Trait(ref poly_trait_predicate, _) = predicate {
                     if must_use_attr(&cx.tcx.get_attrs(poly_trait_predicate.skip_binder().trait_ref.def_id)).is_some() {
@@ -1308,7 +1314,7 @@ pub fn is_must_use_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> boo
             }
             false
         },
-        Dynamic(binder, _) => {
+        ty::Dynamic(binder, _) => {
             for predicate in binder.skip_binder().iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
                     if must_use_attr(&cx.tcx.get_attrs(trait_ref.def_id)).is_some() {

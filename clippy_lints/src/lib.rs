@@ -235,6 +235,7 @@ pub mod let_underscore;
 pub mod lifetimes;
 pub mod literal_representation;
 pub mod loops;
+pub mod macro_use;
 pub mod main_recursion;
 pub mod map_clone;
 pub mod map_unit_fn;
@@ -331,7 +332,7 @@ mod reexport {
 ///
 /// Used in `./src/driver.rs`.
 pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &Conf) {
-    store.register_pre_expansion_pass(|| box write::Write);
+    store.register_pre_expansion_pass(|| box write::Write::default());
     store.register_pre_expansion_pass(|| box redundant_field_names::RedundantFieldNames);
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_pre_expansion_pass(move || box non_expressive_names::NonExpressiveNames {
@@ -601,6 +602,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &loops::WHILE_IMMUTABLE_CONDITION,
         &loops::WHILE_LET_LOOP,
         &loops::WHILE_LET_ON_ITERATOR,
+        &macro_use::MACRO_USE_IMPORTS,
         &main_recursion::MAIN_RECURSION,
         &map_clone::MAP_CLONE,
         &map_unit_fn::OPTION_MAP_UNIT_FN,
@@ -612,6 +614,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &matches::MATCH_REF_PATS,
         &matches::MATCH_SINGLE_BINDING,
         &matches::MATCH_WILD_ERR_ARM,
+        &matches::REST_PAT_IN_FULLY_BOUND_STRUCTS,
         &matches::SINGLE_MATCH,
         &matches::SINGLE_MATCH_ELSE,
         &matches::WILDCARD_ENUM_MATCH_ARM,
@@ -1015,6 +1018,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     // store.register_early_pass(|| box hacspec::Hacspec);
     store.register_late_pass(|| box hacspec::Hacspec);
     store.register_late_pass(|| box wildcard_imports::WildcardImports);
+    store.register_early_pass(|| box macro_use::MacroUseImports);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1030,6 +1034,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&integer_division::INTEGER_DIVISION),
         LintId::of(&let_underscore::LET_UNDERSCORE_MUST_USE),
         LintId::of(&literal_representation::DECIMAL_LITERAL_REPRESENTATION),
+        LintId::of(&matches::REST_PAT_IN_FULLY_BOUND_STRUCTS),
         LintId::of(&matches::WILDCARD_ENUM_MATCH_ARM),
         LintId::of(&mem_forget::MEM_FORGET),
         LintId::of(&methods::CLONE_ON_REF_PTR),
@@ -1081,6 +1086,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&literal_representation::LARGE_DIGIT_GROUPS),
         LintId::of(&loops::EXPLICIT_INTO_ITER_LOOP),
         LintId::of(&loops::EXPLICIT_ITER_LOOP),
+        LintId::of(&macro_use::MACRO_USE_IMPORTS),
         LintId::of(&matches::SINGLE_MATCH_ELSE),
         LintId::of(&methods::FILTER_MAP),
         LintId::of(&methods::FILTER_MAP_NEXT),

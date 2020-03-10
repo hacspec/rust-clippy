@@ -186,19 +186,19 @@ fn unit_closure<'a, 'tcx>(
 /// `x.field` => `x_field`
 /// `y` => `_y`
 ///
-/// Anything else will return `_`.
+/// Anything else will return `a`.
 fn let_binding_name(cx: &LateContext<'_, '_>, var_arg: &hir::Expr<'_>) -> String {
     match &var_arg.kind {
         hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
         hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
-        _ => "_".to_string(),
+        _ => "a".to_string(),
     }
 }
 
 #[must_use]
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     format!(
-        "called `map(f)` on an `{0}` value where `f` is a unit {1}",
+        "called `map(f)` on an `{0}` value where `f` is a {1} that returns the unit type",
         map_type, function_type
     )
 }

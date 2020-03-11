@@ -311,6 +311,7 @@ pub mod unused_self;
 pub mod unwrap;
 pub mod use_self;
 pub mod vec;
+pub mod verbose_file_reads;
 pub mod wildcard_dependencies;
 pub mod wildcard_imports;
 pub mod write;
@@ -817,6 +818,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unwrap::UNNECESSARY_UNWRAP,
         &use_self::USE_SELF,
         &vec::USELESS_VEC,
+        &verbose_file_reads::VERBOSE_FILE_READS,
         &wildcard_dependencies::WILDCARD_DEPENDENCIES,
         &wildcard_imports::ENUM_GLOB_USE,
         &wildcard_imports::WILDCARD_IMPORTS,
@@ -1019,6 +1021,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box hacspec::Hacspec);
     store.register_late_pass(|| box wildcard_imports::WildcardImports);
     store.register_early_pass(|| box macro_use::MacroUseImports);
+    store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1376,6 +1379,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unwrap::PANICKING_UNWRAP),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
         LintId::of(&vec::USELESS_VEC),
+        LintId::of(&verbose_file_reads::VERBOSE_FILE_READS),
         LintId::of(&write::PRINTLN_EMPTY_STRING),
         LintId::of(&write::PRINT_LITERAL),
         LintId::of(&write::PRINT_WITH_NEWLINE),
@@ -1559,6 +1563,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
+        LintId::of(&verbose_file_reads::VERBOSE_FILE_READS),
         LintId::of(&zero_div_zero::ZERO_DIVIDED_BY_ZERO),
     ]);
 

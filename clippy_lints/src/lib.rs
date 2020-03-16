@@ -2,6 +2,7 @@
 
 #![feature(box_syntax)]
 #![feature(box_patterns)]
+#![feature(or_patterns)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
@@ -50,6 +51,8 @@ extern crate rustc_session;
 extern crate rustc_span;
 #[allow(unused_extern_crates)]
 extern crate rustc_target;
+#[allow(unused_extern_crates)]
+extern crate rustc_trait_selection;
 #[allow(unused_extern_crates)]
 extern crate rustc_typeck;
 

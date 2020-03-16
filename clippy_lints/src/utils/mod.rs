@@ -47,12 +47,14 @@ use rustc_hir::{
     MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::predicate_for_trait_def;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_trait_selection::traits::predicate_for_trait_def;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
@@ -313,7 +315,7 @@ pub fn get_trait_def_id(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<DefId
     };
 
     match res {
-        Res::Def(DefKind::Trait, trait_id) | Res::Def(DefKind::TraitAlias, trait_id) => Some(trait_id),
+        Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
         Res::Err => unreachable!("this trait resolution is impossible: {:?}", &path),
         _ => None,
     }
@@ -446,10 +448,11 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<Name> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
     match cx.tcx.hir().find(parent_id) {
-        Some(Node::Item(&Item { ref ident, .. })) => Some(ident.name),
-        Some(Node::TraitItem(&TraitItem { ident, .. })) | Some(Node::ImplItem(&ImplItem { ident, .. })) => {
-            Some(ident.name)
-        },
+        Some(
+            Node::Item(Item { ident, .. })
+            | Node::TraitItem(TraitItem { ident, .. })
+            | Node::ImplItem(ImplItem { ident, .. }),
+        ) => Some(ident.name),
         _ => None,
     }
 }
@@ -477,7 +480,7 @@ impl<'tcx> Visitor<'tcx> for ContainsName {
             self.result = true;
         }
     }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -923,7 +926,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Exp
         if let ExprKind::Path(ref qp) = fun.kind {
             let res = cx.tables.qpath_res(qp, fun.hir_id);
             return match res {
-                def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _) => true,
+                def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
                 _ => false,
             };
@@ -1353,7 +1356,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool 
 }
 
 pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
-    krate.attrs.iter().any(|attr| {
+    krate.item.attrs.iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr) = attr.kind {
             attr.path == symbol::sym::no_std
         } else {
@@ -1387,7 +1390,7 @@ pub fn is_trait_impl_item(cx: &LateContext<'_, '_>, hir_id: HirId) -> bool {
 /// }
 /// ```
 pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_, '_>, did: DefId) -> bool {
-    use rustc_infer::traits;
+    use rustc_trait_selection::traits;
     let predicates = cx
         .tcx
         .predicates_of(did)

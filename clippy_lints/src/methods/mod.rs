@@ -1545,7 +1545,7 @@ fn lint_or_fun_call<'a, 'tcx>(
             }
         }
 
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
             intravisit::NestedVisitorMap::None
         }
     }
@@ -1755,9 +1755,7 @@ fn lint_expect_fun_call(
                 )
             }),
             hir::ExprKind::Path(ref p) => match cx.tables.qpath_res(p, arg.hir_id) {
-                hir::def::Res::Def(hir::def::DefKind::Const, _) | hir::def::Res::Def(hir::def::DefKind::Static, _) => {
-                    true
-                },
+                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _) => true,
                 _ => false,
             },
             _ => false,
@@ -3453,7 +3451,7 @@ fn contains_return(expr: &hir::Expr<'_>) -> bool {
             }
         }
 
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
             intravisit::NestedVisitorMap::None
         }
     }

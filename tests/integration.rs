@@ -1,8 +1,7 @@
 #![cfg(feature = "integration")]
 
-use git2::Repository;
-
 use std::env;
+use std::ffi::OsStr;
 use std::process::Command;
 
 #[cfg_attr(feature = "integration", test)]
@@ -14,12 +13,19 @@ fn integration_test() {
         .nth(1)
         .expect("repo name should have format `<org>/<name>`");
 
-    let repo_dir = tempfile::tempdir()
-        .expect("couldn't create temp dir")
-        .path()
-        .join(crate_name);
+    let mut repo_dir = tempfile::tempdir().expect("couldn't create temp dir").into_path();
+    repo_dir.push(crate_name);
 
-    Repository::clone(&repo_url, &repo_dir).expect("clone of repo failed");
+    let st = Command::new("git")
+        .args(&[
+            OsStr::new("clone"),
+            OsStr::new("--depth=1"),
+            OsStr::new(&repo_url),
+            OsStr::new(&repo_dir),
+        ])
+        .status()
+        .expect("unable to run git");
+    assert!(st.success());
 
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let target_dir = std::path::Path::new(&root_dir).join("target");
@@ -66,13 +72,8 @@ fn integration_test() {
     }
 
     match output.status.code() {
-        Some(code) => {
-            if code == 0 {
-                println!("Compilation successful");
-            } else {
-                eprintln!("Compilation failed. Exit code: {}", code);
-            }
-        },
+        Some(0) => println!("Compilation successful"),
+        Some(code) => eprintln!("Compilation failed. Exit code: {}", code),
         None => panic!("Process terminated by signal"),
     }
 }

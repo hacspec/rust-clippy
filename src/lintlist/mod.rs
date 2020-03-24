@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 361] = [
+pub const ALL_LINTS: [Lint; 362] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1765,6 +1765,13 @@ pub const ALL_LINTS: [Lint; 361] = [
         module: "redundant_pattern_matching",
     },
     Lint {
+        name: "redundant_pub_crate",
+        group: "style",
+        desc: "Using `pub(crate)` visibility on items that are not crate visible due to the visibility of the module that contains them.",
+        deprecation: None,
+        module: "redundant_pub_crate",
+    },
+    Lint {
         name: "redundant_static_lifetimes",
         group: "style",
         desc: "Using explicit `\'static` lifetime for constants or statics when elision rules would allow omitting them.",
@@ -2375,7 +2382,7 @@ pub const ALL_LINTS: [Lint; 361] = [
     },
     Lint {
         name: "useless_transmute",
-        group: "complexity",
+        group: "nursery",
         desc: "transmutes that have the same to and from types or could be a cast/coercion",
         deprecation: None,
         module: "transmute",

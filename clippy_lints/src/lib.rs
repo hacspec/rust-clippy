@@ -286,6 +286,7 @@ pub mod ranges;
 pub mod redundant_clone;
 pub mod redundant_field_names;
 pub mod redundant_pattern_matching;
+pub mod redundant_pub_crate;
 pub mod redundant_static_lifetimes;
 pub mod reference;
 pub mod regex;
@@ -324,7 +325,7 @@ pub mod zero_div_zero;
 pub use crate::utils::conf::Conf;
 
 mod reexport {
-    crate use rustc_ast::ast::Name;
+    pub use rustc_ast::ast::Name;
 }
 
 /// Register all pre expansion lints
@@ -747,6 +748,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &redundant_clone::REDUNDANT_CLONE,
         &redundant_field_names::REDUNDANT_FIELD_NAMES,
         &redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
+        &redundant_pub_crate::REDUNDANT_PUB_CRATE,
         &redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
         &reference::DEREF_ADDROF,
         &reference::REF_IN_DEREF,
@@ -1025,6 +1027,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box wildcard_imports::WildcardImports);
     store.register_early_pass(|| box macro_use::MacroUseImports);
     store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
+    store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1326,6 +1329,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&redundant_clone::REDUNDANT_CLONE),
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING),
+        LintId::of(&redundant_pub_crate::REDUNDANT_PUB_CRATE),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
@@ -1355,7 +1359,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::TRANSMUTE_PTR_TO_PTR),
         LintId::of(&transmute::TRANSMUTE_PTR_TO_REF),
         LintId::of(&transmute::UNSOUND_COLLECTION_TRANSMUTE),
-        LintId::of(&transmute::USELESS_TRANSMUTE),
         LintId::of(&transmute::WRONG_TRANSMUTE),
         LintId::of(&transmuting_null::TRANSMUTING_NULL),
         LintId::of(&trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF),
@@ -1467,6 +1470,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&question_mark::QUESTION_MARK),
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING),
+        LintId::of(&redundant_pub_crate::REDUNDANT_PUB_CRATE),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(&regex::REGEX_MACRO),
         LintId::of(&regex::TRIVIAL_REGEX),
@@ -1557,7 +1561,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::TRANSMUTE_INT_TO_FLOAT),
         LintId::of(&transmute::TRANSMUTE_PTR_TO_PTR),
         LintId::of(&transmute::TRANSMUTE_PTR_TO_REF),
-        LintId::of(&transmute::USELESS_TRANSMUTE),
         LintId::of(&types::BORROWED_BOX),
         LintId::of(&types::CHAR_LIT_AS_U8),
         LintId::of(&types::OPTION_OPTION),
@@ -1674,6 +1677,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
         LintId::of(&needless_borrow::NEEDLESS_BORROW),
         LintId::of(&path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),
+        LintId::of(&transmute::USELESS_TRANSMUTE),
         LintId::of(&use_self::USE_SELF),
     ]);
 }

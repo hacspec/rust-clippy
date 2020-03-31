@@ -339,7 +339,7 @@ mod reexport {
 /// Used in `./src/driver.rs`.
 pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &Conf) {
     store.register_pre_expansion_pass(|| box write::Write::default());
-    store.register_pre_expansion_pass(|| box hacspec_macros::HacspecMacros);
+    store.register_pre_expansion_pass(|| box hacspec_macros::HacspecMacros::default());
     store.register_pre_expansion_pass(|| box redundant_field_names::RedundantFieldNames);
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_pre_expansion_pass(move || box non_expressive_names::NonExpressiveNames {

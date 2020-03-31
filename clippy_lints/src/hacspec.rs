@@ -1,8 +1,15 @@
-use crate::utils::*;
+//! Checks syntax of programs written in the 'hacspec' subset of rust
+//! See https://github.com/hacspec/hacspec-rust/blob/franziskus-dev/LANGUAGE.md for the (BNF ?) syntax
+//!
+//!
+
+
+use crate::utils::span_lint;
+//might use crate::utils::higher to look into loops
 use rustc::lint::in_external_macro;
 use rustc_hir::{
-    intravisit, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Mod, Mutability, Param, Pat,
-    PatKind, Path, PathSegment, Ty, TyKind,
+    intravisit, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Mod, Param, Pat,
+    PatKind, Path, PathSegment, Ty, TyKind, StructField,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -13,7 +20,7 @@ use rustc_span::{
 
 declare_clippy_lint! {
     pub HACSPEC,
-    pedantic,
+    nursery, //pedantic, corectness or restriction, but shouldn't interfere with other lints ? or shipped completely separately
     "Checks whether the code belongs to the hacspec subset of Rust"
 }
 
@@ -56,7 +63,10 @@ fn allowed_type(typ: &Ty<'_>) -> bool {
     }
 }
 
+
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
+
     fn check_path(&mut self, cx: &LateContext<'a, 'tcx>, path: &'tcx Path<'tcx>, _: HirId) {
         // Items used in the code are whitelisted
         if in_external_macro(cx.sess(), path.span) {
@@ -132,6 +142,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         }
     }
 
+    fn check_struct_field(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        sf: &'tcx StructField<'tcx>
+    ) {
+        // The types of struct (incl. tuples) declaration parameters cannot be references
+        if !(allowed_type(sf.ty)) {
+            span_lint(cx, HACSPEC, sf.span, &"[HACSPEC] Unsupported type")
+        }
+    }
+
+
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'tcx>) {
         if in_external_macro(cx.sess(), item.span) {
             return;
@@ -139,15 +161,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         match &item.kind {
             ItemKind::TyAlias(ref typ, _) | ItemKind::Const(ref typ, _) => {
                 if !allowed_type(typ) {
-                    span_lint(cx, HACSPEC, item.span, &"[HACSPEC] Unauthorized type for alias")
+                    span_lint(cx, HACSPEC, item.span, &"[HACSPEC] Unsupported type")
                 }
             },
-            ItemKind::Static(typ, m, _) => {
-                if !allowed_type(typ) || *m == Mutability::Mut {
-                    span_lint(cx, HACSPEC, item.span, &"[HACSPEC] Unauthorized static item")
-                }
-            },
-            ItemKind::ExternCrate(_) | ItemKind::Use(_, _) | ItemKind::Fn(_, _, _) => (),
+            ItemKind::Enum(_, _) | ItemKind::Struct(_, _) |
+            ItemKind::Fn(_, _, _) |
+            ItemKind::ExternCrate(_) | ItemKind::Use(_, _) => (),
             _ => span_lint(cx, HACSPEC, item.span, &"[HACSPEC] Unauthorized item"),
         }
     }

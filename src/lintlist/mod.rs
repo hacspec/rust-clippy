@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 364] = [
+pub const ALL_LINTS: [Lint; 365] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -622,6 +622,13 @@ pub const ALL_LINTS: [Lint; 364] = [
         desc: "using `==` or `!=` on float constants instead of comparing difference with an epsilon",
         deprecation: None,
         module: "misc",
+    },
+    Lint {
+        name: "fn_address_comparisons",
+        group: "correctness",
+        desc: "comparison with an address of a function item",
+        deprecation: None,
+        module: "unnamed_address",
     },
     Lint {
         name: "fn_params_excessive_bools",
@@ -1780,7 +1787,7 @@ pub const ALL_LINTS: [Lint; 364] = [
     },
     Lint {
         name: "redundant_pub_crate",
-        group: "style",
+        group: "nursery",
         desc: "Using `pub(crate)` visibility on items that are not crate visible due to the visibility of the module that contains them.",
         deprecation: None,
         module: "redundant_pub_crate",
@@ -1805,13 +1812,6 @@ pub const ALL_LINTS: [Lint; 364] = [
         desc: "use of `regex!(_)` instead of `Regex::new(_)`",
         deprecation: None,
         module: "regex",
-    },
-    Lint {
-        name: "replace_consts",
-        group: "pedantic",
-        desc: "Lint usages of standard library `const`s that could be replaced by `const fn`s",
-        deprecation: None,
-        module: "replace_consts",
     },
     Lint {
         name: "rest_pat_in_fully_bound_structs",
@@ -2424,10 +2424,17 @@ pub const ALL_LINTS: [Lint; 364] = [
     },
     Lint {
         name: "verbose_file_reads",
-        group: "complexity",
+        group: "restriction",
         desc: "use of `File::read_to_end` or `File::read_to_string`",
         deprecation: None,
         module: "verbose_file_reads",
+    },
+    Lint {
+        name: "vtable_address_comparisons",
+        group: "correctness",
+        desc: "comparison with an address of a trait vtable",
+        deprecation: None,
+        module: "unnamed_address",
     },
     Lint {
         name: "while_immutable_condition",

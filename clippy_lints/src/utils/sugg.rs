@@ -2,7 +2,6 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::utils::{higher, snippet, snippet_opt, snippet_with_macro_callsite};
-use matches::matches;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;
@@ -109,7 +108,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Call(..)
             | hir::ExprKind::Field(..)
             | hir::ExprKind::Index(..)
-            | hir::ExprKind::InlineAsm(..)
+            | hir::ExprKind::LlvmInlineAsm(..)
             | hir::ExprKind::Lit(..)
             | hir::ExprKind::Loop(..)
             | hir::ExprKind::MethodCall(..)
@@ -151,7 +150,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Field(..)
             | ast::ExprKind::ForLoop(..)
             | ast::ExprKind::Index(..)
-            | ast::ExprKind::InlineAsm(..)
+            | ast::ExprKind::LlvmInlineAsm(..)
             | ast::ExprKind::Lit(..)
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::MacCall(..)

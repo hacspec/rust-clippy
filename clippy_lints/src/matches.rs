@@ -9,16 +9,16 @@ use crate::utils::{
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
-use rustc::ty::{self, Ty};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::{
-    print, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Node, Pat,
-    PatKind, QPath, RangeEnd,
+    Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Node, Pat, PatKind,
+    QPath, RangeEnd,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use std::cmp::Ordering;
@@ -536,10 +536,12 @@ fn check_single_match_opt_like(
             if !inner.iter().all(is_wild) {
                 return;
             }
-            print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
+            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
         },
         PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => ident.to_string(),
-        PatKind::Path(ref path) => print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)),
+        PatKind::Path(ref path) => {
+            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
+        },
         _ => return,
     };
 
@@ -638,7 +640,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
     if match_type(cx, ex_ty, &paths::RESULT) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {
-                let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
+                let path_str = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false));
                 if path_str == "Err" {
                     let mut matching_wild = inner.iter().any(is_wild);
                     let mut ident_bind_name = String::from("_");

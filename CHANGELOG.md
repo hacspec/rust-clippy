@@ -1281,6 +1281,8 @@ Released 2018-09-13
 [`forget_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_ref
 [`get_last_with_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_last_with_len
 [`get_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_unwrap
+[`hacspec`]: https://rust-lang.github.io/rust-clippy/master/index.html#hacspec
+[`hacspec_macros`]: https://rust-lang.github.io/rust-clippy/master/index.html#hacspec_macros
 [`identity_conversion`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_conversion
 [`identity_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_op
 [`if_let_redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_redundant_pattern_matching

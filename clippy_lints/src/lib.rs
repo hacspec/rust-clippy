@@ -217,6 +217,7 @@ pub mod formatting;
 pub mod functions;
 pub mod get_last_with_len;
 pub mod hacspec;
+pub mod hacspec_macros;
 pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_let_some_result;
@@ -338,6 +339,7 @@ mod reexport {
 /// Used in `./src/driver.rs`.
 pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &Conf) {
     store.register_pre_expansion_pass(|| box write::Write::default());
+    store.register_pre_expansion_pass(|| box hacspec_macros::HacspecMacros);
     store.register_pre_expansion_pass(|| box redundant_field_names::RedundantFieldNames);
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_pre_expansion_pass(move || box non_expressive_names::NonExpressiveNames {
@@ -560,6 +562,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &functions::TOO_MANY_LINES,
         &get_last_with_len::GET_LAST_WITH_LEN,
         &hacspec::HACSPEC,
+        &hacspec_macros::HACSPEC_MACROS,
         &identity_conversion::IDENTITY_CONVERSION,
         &identity_op::IDENTITY_OP,
         &if_let_some_result::IF_LET_SOME_RESULT,
@@ -1023,6 +1026,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
     // store.register_early_pass(|| box hacspec::Hacspec);
+    // store.register_early_pass(|| box hacspec_macros::HacspecMacros);
     store.register_late_pass(|| box hacspec::Hacspec);
     store.register_late_pass(|| box wildcard_imports::WildcardImports);
     store.register_early_pass(|| box macro_use::MacroUseImports);
@@ -1088,6 +1092,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&excessive_bools::STRUCT_EXCESSIVE_BOOLS),
         LintId::of(&functions::MUST_USE_CANDIDATE),
         LintId::of(&functions::TOO_MANY_LINES),
+        LintId::of(&hacspec::HACSPEC),
+        LintId::of(&hacspec_macros::HACSPEC_MACROS),
         LintId::of(&if_not_else::IF_NOT_ELSE),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(&items_after_statements::ITEMS_AFTER_STATEMENTS),

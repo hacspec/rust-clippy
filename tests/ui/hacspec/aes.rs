@@ -1,5 +1,6 @@
 #![allow(clippy::all)]
 #![deny(clippy::hacspec)]
+#![deny(clippy::hacspec_macros)]
 
 extern crate hacspec;
 extern crate contracts;

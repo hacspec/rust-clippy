@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 362] = [
+pub const ALL_LINTS: [Lint; 364] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -692,6 +692,20 @@ pub const ALL_LINTS: [Lint; 362] = [
         desc: "using `.get().unwrap()` or `.get_mut().unwrap()` when using `[]` would work instead",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "hacspec",
+        group: "pedantic",
+        desc: "Checks whether the code belongs to the hacspec subset of Rust",
+        deprecation: None,
+        module: "hacspec",
+    },
+    Lint {
+        name: "hacspec_macros",
+        group: "pedantic",
+        desc: "default lint description",
+        deprecation: None,
+        module: "hacspec_macros",
     },
     Lint {
         name: "identity_conversion",

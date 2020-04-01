@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
             // Paths of len 1 correspond to items inside the crate, except when used in imports
             return;
         };
-        span_lint(cx, HACSPEC, path.span, &format!("[HACSPEC] Unauthorized item {}", path))
+        span_lint(cx, HACSPEC, path.span, &format!("[HACSPEC] Unauthorized item {:?}", path));
     }
 
     fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod<'tcx>, span: Span, _: HirId) {
@@ -93,7 +93,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
                 if allowed_path(&path.segments) {
                     continue;
                 };
-                span_lint(cx, HACSPEC, item.span, &format!("Unauthorized item {}", path))
+                span_lint(cx, HACSPEC, item.span, &format!("Unauthorized item {:?}", path))
             }
         }
     }

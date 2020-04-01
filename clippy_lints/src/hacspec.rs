@@ -6,7 +6,7 @@
 
 use crate::utils::span_lint;
 //might use crate::utils::higher to look into loops
-use rustc::lint::in_external_macro;
+use rustc_middle::lint::in_external_macro;
 use rustc_hir::{
     intravisit, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Mod, Param, Pat,
     PatKind, Path, PathSegment, Ty, TyKind, StructField,
@@ -217,7 +217,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
             | ExprKind::Closure(_, _, _, _, _)
             | ExprKind::Box(_)
             | ExprKind::Continue(_)
-            | ExprKind::InlineAsm(_)
+            | ExprKind::LlvmInlineAsm(_)
             | ExprKind::Err => span_lint(cx, HACSPEC, expr.span, &"[HACSPEC] Unauthorized expression"),
         }
     }

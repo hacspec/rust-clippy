@@ -1580,7 +1580,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "option_option",
-        group: "complexity",
+        group: "pedantic",
         desc: "usage of `Option<Option<T>>`",
         deprecation: None,
         module: "types",
@@ -1738,6 +1738,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "zipping iterator with a range when `enumerate()` would do",
         deprecation: None,
         module: "ranges",
+    },
+    Lint {
+        name: "redundant_allocation",
+        group: "perf",
+        desc: "redundant allocation",
+        deprecation: None,
+        module: "types",
     },
     Lint {
         name: "redundant_clone",

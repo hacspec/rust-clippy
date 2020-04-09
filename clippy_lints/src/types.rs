@@ -315,7 +315,6 @@ impl Types {
     /// The parameter `is_local` distinguishes the context of the type; types from
     /// local bindings should only be checked for the `BORROWED_BOX` lint.
     #[allow(clippy::too_many_lines)]
-    #[allow(clippy::cognitive_complexity)]
     fn check_ty(&mut self, cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
         if hir_ty.span.from_expansion() {
             return;
@@ -593,7 +592,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     pub LET_UNIT_VALUE,
-    style,
+    pedantic,
     "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
 }
 
@@ -837,7 +836,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = std::u64::MAX;
+    /// let x = u64::MAX;
     /// x as f64;
     /// ```
     pub CAST_PRECISION_LOSS,
@@ -904,7 +903,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// std::u32::MAX as i32; // will yield a value of `-1`
+    /// u32::MAX as i32; // will yield a value of `-1`
     /// ```
     pub CAST_POSSIBLE_WRAP,
     pedantic,
@@ -1752,7 +1751,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let vec: Vec<isize> = Vec::new();
     /// if vec.len() <= 0 {}
-    /// if 100 > std::i32::MAX {}
+    /// if 100 > i32::MAX {}
     /// ```
     pub ABSURD_EXTREME_COMPARISONS,
     correctness,
@@ -1973,8 +1972,6 @@ impl Ord for FullInt {
 }
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'_>) -> Option<(FullInt, FullInt)> {
-    use std::{i128, i16, i32, i64, i8, isize, u128, u16, u32, u64, u8, usize};
-
     if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
         let pre_cast_ty = cx.tables.expr_ty(cast_exp);
         let cast_ty = cx.tables.expr_ty(expr);
@@ -2172,7 +2169,7 @@ declare_clippy_lint! {
     /// pub fn foo<S: BuildHasher>(map: &mut HashMap<i32, i32, S>) { }
     /// ```
     pub IMPLICIT_HASHER,
-    style,
+    pedantic,
     "missing generalization over different hashers"
 }
 

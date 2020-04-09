@@ -250,7 +250,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "cognitive_complexity",
-        group: "complexity",
+        group: "nursery",
         desc: "functions that should be split up into multiple functions",
         deprecation: None,
         module: "cognitive_complexity",
@@ -761,7 +761,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "implicit_hasher",
-        group: "style",
+        group: "pedantic",
         desc: "missing generalization over different hashers",
         deprecation: None,
         module: "types",
@@ -803,7 +803,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "inefficient_to_string",
-        group: "perf",
+        group: "pedantic",
         desc: "using `to_string` on `&&T` where `T: ToString`",
         deprecation: None,
         module: "methods",
@@ -1013,7 +1013,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "let_unit_value",
-        group: "style",
+        group: "pedantic",
         desc: "creating a `let` binding to a value of unit type, which usually can\'t be used afterwards",
         deprecation: None,
         module: "types",
@@ -1461,7 +1461,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "new_ret_no_self",
-        group: "style",
+        group: "pedantic",
         desc: "not returning `Self` in a `new` method",
         deprecation: None,
         module: "methods",
@@ -1838,6 +1838,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "result_map_or_into_option",
+        group: "style",
+        desc: "using `Result.map_or(None, Some)`, which is more succinctly expressed as `ok()`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "result_map_unit_fn",
         group: "complexity",
         desc: "using `result.map(f)`, where `f` is a function or closure that returns `()`",
@@ -2175,7 +2182,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "trivially_copy_pass_by_ref",
-        group: "perf",
+        group: "pedantic",
         desc: "functions taking small copyable arguments by reference",
         deprecation: None,
         module: "trivially_copy_pass_by_ref",
@@ -2308,7 +2315,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "unreadable_literal",
-        group: "style",
+        group: "pedantic",
         desc: "long integer literal without underscores",
         deprecation: None,
         module: "literal_representation",
@@ -2540,7 +2547,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "zero_divided_by_zero",
         group: "complexity",
-        desc: "usage of `0.0 / 0.0` to obtain NaN instead of `std::f32::NAN` or `std::f64::NAN`",
+        desc: "usage of `0.0 / 0.0` to obtain NaN instead of `f32::NAN` or `f64::NAN`",
         deprecation: None,
         module: "zero_div_zero",
     },

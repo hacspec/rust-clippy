@@ -15,6 +15,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Predicate, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -328,6 +329,32 @@ declare_clippy_lint! {
     pub OPTION_MAP_OR_NONE,
     style,
     "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.map_or(None, Some)`.
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely as
+    /// `_.ok()`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// Bad:
+    /// ```rust
+    /// # let r: Result<u32, &str> = Ok(1);
+    /// assert_eq!(Some(1), r.map_or(None, Some));
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// # let r: Result<u32, &str> = Ok(1);
+    /// assert_eq!(Some(1), r.ok());
+    /// ```
+    pub RESULT_MAP_OR_INTO_OPTION,
+    style,
+    "using `Result.map_or(None, Some)`, which is more succinctly expressed as `ok()`"
 }
 
 declare_clippy_lint! {
@@ -698,7 +725,7 @@ declare_clippy_lint! {
     /// ["foo", "bar"].iter().map(|&s| s.to_string());
     /// ```
     pub INEFFICIENT_TO_STRING,
-    perf,
+    pedantic,
     "using `to_string` on `&&T` where `T: ToString`"
 }
 
@@ -721,7 +748,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub NEW_RET_NO_SELF,
-    style,
+    pedantic,
     "not returning `Self` in a `new` method"
 }
 
@@ -1137,8 +1164,8 @@ declare_clippy_lint! {
     /// ```rust
     /// # let y: u32 = 0;
     /// # let x: u32 = 100;
-    /// let add = x.checked_add(y).unwrap_or(u32::max_value());
-    /// let sub = x.checked_sub(y).unwrap_or(u32::min_value());
+    /// let add = x.checked_add(y).unwrap_or(u32::MAX);
+    /// let sub = x.checked_sub(y).unwrap_or(u32::MIN);
     /// ```
     ///
     /// can be written using dedicated methods for saturating addition/subtraction as:
@@ -1248,6 +1275,7 @@ declare_lint_pass!(Methods => [
     OPTION_MAP_UNWRAP_OR,
     OPTION_MAP_UNWRAP_OR_ELSE,
     RESULT_MAP_UNWRAP_OR_ELSE,
+    RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
     OPTION_AND_THEN_SOME,
     OR_FUN_CALL,
@@ -1289,7 +1317,7 @@ declare_lint_pass!(Methods => [
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
-    #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if in_macro(expr.span) {
             return;
@@ -1407,7 +1435,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);
         let item = cx.tcx.hir().expect_item(parent);
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
-        let ty = cx.tcx.type_of(def_id);
+        let self_ty = cx.tcx.type_of(def_id);
         if_chain! {
             if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
@@ -1425,11 +1453,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             then {
                 if cx.access_levels.is_exported(impl_item.hir_id) {
                 // check missing trait implementations
-                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                    for &(method_name, n_args, fn_header, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if name == method_name &&
-                        sig.decl.inputs.len() == n_args &&
-                        out_type.matches(cx, &sig.decl.output) &&
-                        self_kind.matches(cx, ty, first_arg_ty) {
+                            sig.decl.inputs.len() == n_args &&
+                            out_type.matches(cx, &sig.decl.output) &&
+                            self_kind.matches(cx, self_ty, first_arg_ty) &&
+                            fn_header_equals(*fn_header, sig.header) {
                             span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
                                 "defining a method called `{}` on this type; consider implementing \
                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -1441,7 +1470,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                     .iter()
                     .find(|(ref conv, _)| conv.check(&name))
                 {
-                    if !self_kinds.iter().any(|k| k.matches(cx, ty, first_arg_ty)) {
+                    if !self_kinds.iter().any(|k| k.matches(cx, self_ty, first_arg_ty)) {
                         let lint = if item.vis.node.is_pub() {
                             WRONG_PUB_SELF_CONVENTION
                         } else {
@@ -1471,8 +1500,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
+            let contains_self_ty = |ty: Ty<'tcx>| {
+                ty.walk().any(|inner| match inner.unpack() {
+                    GenericArgKind::Type(inner_ty) => same_tys(cx, self_ty, inner_ty),
+
+                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+                })
+            };
+
             // walk the return type and check for Self (this does not check associated types)
-            if ret_ty.walk().any(|inner_type| same_tys(cx, ty, inner_type)) {
+            if contains_self_ty(ret_ty) {
                 return;
             }
 
@@ -1486,10 +1523,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                             let associated_type = binder.skip_binder();
 
                             // walk the associated type and check for Self
-                            for inner_type in associated_type.walk() {
-                                if same_tys(cx, ty, inner_type) {
-                                    return;
-                                }
+                            if contains_self_ty(associated_type) {
+                                return;
                             }
                         },
                         (_, _) => {},
@@ -1497,7 +1532,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 }
             }
 
-            if name == "new" && !same_tys(cx, ret_ty, ty) {
+            if name == "new" && !same_tys(cx, ret_ty, self_ty) {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
@@ -2517,38 +2552,78 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
     }
 }
 
-/// lint use of `_.map_or(None, _)` for `Option`s
+/// lint use of `_.map_or(None, _)` for `Option`s and `Result`s
 fn lint_map_or_none<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &'tcx hir::Expr<'_>,
     map_or_args: &'tcx [hir::Expr<'_>],
 ) {
-    if match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION) {
-        // check if the first non-self argument to map_or() is None
-        let map_or_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].kind {
+    let is_option = match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION);
+    let is_result = match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::RESULT);
+
+    // There are two variants of this `map_or` lint:
+    // (1) using `map_or` as an adapter from `Result<T,E>` to `Option<T>`
+    // (2) using `map_or` as a combinator instead of `and_then`
+    //
+    // (For this lint) we don't care if any other type calls `map_or`
+    if !is_option && !is_result {
+        return;
+    }
+
+    let (lint_name, msg, instead, hint) = {
+        let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].kind {
             match_qpath(qpath, &paths::OPTION_NONE)
+        } else {
+            return;
+        };
+
+        if !default_arg_is_none {
+            // nothing to lint!
+            return;
+        }
+
+        let f_arg_is_some = if let hir::ExprKind::Path(ref qpath) = map_or_args[2].kind {
+            match_qpath(qpath, &paths::OPTION_SOME)
         } else {
             false
         };
 
-        if map_or_arg_is_none {
-            // lint message
+        if is_option {
+            let self_snippet = snippet(cx, map_or_args[0].span, "..");
+            let func_snippet = snippet(cx, map_or_args[2].span, "..");
             let msg = "called `map_or(None, f)` on an `Option` value. This can be done more directly by calling \
                        `and_then(f)` instead";
-            let map_or_self_snippet = snippet(cx, map_or_args[0].span, "..");
-            let map_or_func_snippet = snippet(cx, map_or_args[2].span, "..");
-            let hint = format!("{0}.and_then({1})", map_or_self_snippet, map_or_func_snippet);
-            span_lint_and_sugg(
-                cx,
+            (
                 OPTION_MAP_OR_NONE,
-                expr.span,
                 msg,
                 "try using `and_then` instead",
-                hint,
-                Applicability::MachineApplicable,
-            );
+                format!("{0}.and_then({1})", self_snippet, func_snippet),
+            )
+        } else if f_arg_is_some {
+            let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
+                       `ok()` instead";
+            let self_snippet = snippet(cx, map_or_args[0].span, "..");
+            (
+                RESULT_MAP_OR_INTO_OPTION,
+                msg,
+                "try using `ok` instead",
+                format!("{0}.ok()", self_snippet),
+            )
+        } else {
+            // nothing to lint!
+            return;
         }
-    }
+    };
+
+    span_lint_and_sugg(
+        cx,
+        lint_name,
+        expr.span,
+        msg,
+        instead,
+        hint,
+        Applicability::MachineApplicable,
+    );
 }
 
 /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
@@ -3159,6 +3234,8 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
     map_args: &[hir::Expr<'_>],
     is_mut: bool,
 ) {
+    let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
+
     let option_ty = cx.tables.expr_ty(&as_ref_args[0]);
     if !match_type(cx, option_ty, &paths::OPTION) {
         return;
@@ -3181,39 +3258,56 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
         hir::ExprKind::Closure(_, _, body_id, _, _) => {
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
-            if_chain! {
-                if let hir::ExprKind::MethodCall(_, _, args) = &closure_expr.kind;
-                if args.len() == 1;
-                if let hir::ExprKind::Path(qpath) = &args[0].kind;
-                if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, args[0].hir_id);
-                if closure_body.params[0].pat.hir_id == local_id;
-                let adj = cx.tables.expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
-                if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
-                then {
-                    let method_did = cx.tables.type_dependent_def_id(closure_expr.hir_id).unwrap();
-                    deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
-                } else {
-                    false
-                }
+
+            match &closure_expr.kind {
+                hir::ExprKind::MethodCall(_, _, args) => {
+                    if_chain! {
+                        if args.len() == 1;
+                        if let hir::ExprKind::Path(qpath) = &args[0].kind;
+                        if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, args[0].hir_id);
+                        if closure_body.params[0].pat.hir_id == local_id;
+                        let adj = cx.tables.expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
+                        if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
+                        then {
+                            let method_did = cx.tables.type_dependent_def_id(closure_expr.hir_id).unwrap();
+                            deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
+                        } else {
+                            false
+                        }
+                    }
+                },
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref inner) if same_mutability(m) => {
+                    if_chain! {
+                        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner1) = inner.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner2) = inner1.kind;
+                        if let hir::ExprKind::Path(ref qpath) = inner2.kind;
+                        if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, inner2.hir_id);
+                        then {
+                            closure_body.params[0].pat.hir_id == local_id
+                        } else {
+                            false
+                        }
+                    }
+                },
+                _ => false,
             }
         },
-
         _ => false,
     };
 
     if is_deref {
         let current_method = if is_mut {
-            ".as_mut().map(DerefMut::deref_mut)"
+            format!(".as_mut().map({})", snippet(cx, map_args[1].span, ".."))
         } else {
-            ".as_ref().map(Deref::deref)"
+            format!(".as_ref().map({})", snippet(cx, map_args[1].span, ".."))
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
         let hint = format!("{}.{}()", snippet(cx, as_ref_args[0].span, ".."), method_hint);
         let suggestion = format!("try using {} instead", method_hint);
 
         let msg = format!(
-            "called `{0}` (or with one of deref aliases) on an Option value. \
-             This can be done more directly by calling `{1}` instead",
+            "called `{0}` on an Option value. This can be done more directly \
+            by calling `{1}` instead",
             current_method, hint
         );
         span_lint_and_sugg(
@@ -3259,38 +3353,45 @@ const CONVENTIONS: [(Convention, &[SelfKind]); 7] = [
     (Convention::StartsWith("to_"), &[SelfKind::Ref]),
 ];
 
+const FN_HEADER: hir::FnHeader = hir::FnHeader {
+    unsafety: hir::Unsafety::Normal,
+    constness: hir::Constness::NotConst,
+    asyncness: hir::IsAsync::NotAsync,
+    abi: rustc_target::spec::abi::Abi::Rust,
+};
+
 #[rustfmt::skip]
-const TRAIT_METHODS: [(&str, usize, SelfKind, OutType, &str); 30] = [
-    ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
-    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
-    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
-    ("bitand", 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
-    ("bitor", 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
-    ("bitxor", 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
-    ("borrow", 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
-    ("borrow_mut", 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
-    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
-    ("cmp", 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
-    ("default", 0, SelfKind::No, OutType::Any, "std::default::Default"),
-    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
-    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
-    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
-    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
-    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
-    ("from_iter", 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
-    ("from_str", 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
-    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
-    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
-    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
-    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
-    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
-    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
-    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
-    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
-    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
-    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
-    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
-    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
+const TRAIT_METHODS: [(&str, usize, &hir::FnHeader, SelfKind, OutType, &str); 30] = [
+    ("add", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Add"),
+    ("as_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
+    ("as_ref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
+    ("bitand", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
+    ("bitor", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
+    ("bitxor", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
+    ("borrow", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
+    ("borrow_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
+    ("clone", 1, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
+    ("cmp", 2, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
+    ("default", 0, &FN_HEADER, SelfKind::No, OutType::Any, "std::default::Default"),
+    ("deref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
+    ("deref_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
+    ("div", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Div"),
+    ("drop", 1, &FN_HEADER, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
+    ("eq", 2, &FN_HEADER, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
+    ("from_iter", 1, &FN_HEADER, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
+    ("from_str", 1, &FN_HEADER, SelfKind::No, OutType::Any, "std::str::FromStr"),
+    ("hash", 2, &FN_HEADER, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
+    ("index", 2, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
+    ("index_mut", 2, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
+    ("into_iter", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("mul", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Mul"),
+    ("neg", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Neg"),
+    ("next", 1, &FN_HEADER, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
+    ("not", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Not"),
+    ("rem", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Rem"),
+    ("shl", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Shl"),
+    ("shr", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("sub", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Sub"),
 ];
 
 #[rustfmt::skip]
@@ -3502,4 +3603,10 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
     let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);
     let help_msg = format!("use `{}FileType::is_dir()` instead", help_unary);
     span_lint_and_help(cx, FILETYPE_IS_FILE, span, &lint_msg, &help_msg);
+}
+
+fn fn_header_equals(expected: hir::FnHeader, actual: hir::FnHeader) -> bool {
+    expected.constness == actual.constness
+        && expected.unsafety == actual.unsafety
+        && expected.asyncness == actual.asyncness
 }

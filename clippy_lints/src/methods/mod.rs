@@ -730,7 +730,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `new` not returning `Self`.
+    /// **What it does:** Checks for `new` not returning a type that contains `Self`.
     ///
     /// **Why is this bad?** As a convention, `new` methods are used to make a new
     /// instance of a type.
@@ -747,9 +747,31 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    ///
+    /// ```rust
+    /// # struct Foo;
+    /// # struct FooError;
+    /// impl Foo {
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Result<Foo, FooError> {
+    ///         # Ok(Foo)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// # struct Foo;
+    /// struct Bar(Foo);
+    /// impl Foo {
+    ///     // Bad. The type name must contain `Self`.
+    ///     fn new() -> Bar {
+    ///         # Bar(Foo)
+    ///     }
+    /// }
+    /// ```
     pub NEW_RET_NO_SELF,
-    pedantic,
-    "not returning `Self` in a `new` method"
+    style,
+    "not returning type containing `Self` in a `new` method"
 }
 
 declare_clippy_lint! {
@@ -1947,9 +1969,10 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
             match &cx.tcx.hir().get(parent) {
                 hir::Node::Expr(parent) => match parent.kind {
                     // &*x is a nop, &x.clone() is not
-                    hir::ExprKind::AddrOf(..) |
+                    hir::ExprKind::AddrOf(..) => return,
                     // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
-                    hir::ExprKind::MethodCall(..) => return,
+                    hir::ExprKind::MethodCall(_, _, parent_args) if expr.hir_id == parent_args[0].hir_id => return,
+
                     _ => {},
                 },
                 hir::Node::Stmt(stmt) => {
@@ -3425,12 +3448,12 @@ enum SelfKind {
 
 impl SelfKind {
     fn matches<'a>(self, cx: &LateContext<'_, 'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-        fn matches_value(parent_ty: Ty<'_>, ty: Ty<'_>) -> bool {
+        fn matches_value<'a>(cx: &LateContext<'_, 'a>, parent_ty: Ty<'_>, ty: Ty<'_>) -> bool {
             if ty == parent_ty {
                 true
             } else if ty.is_box() {
                 ty.boxed_ty() == parent_ty
-            } else if ty.is_rc() || ty.is_arc() {
+            } else if is_type_diagnostic_item(cx, ty, sym::Rc) || is_type_diagnostic_item(cx, ty, sym::Arc) {
                 if let ty::Adt(_, substs) = ty.kind {
                     substs.types().next().map_or(false, |t| t == parent_ty)
                 } else {
@@ -3464,7 +3487,7 @@ impl SelfKind {
         }
 
         match self {
-            Self::Value => matches_value(parent_ty, ty),
+            Self::Value => matches_value(cx, parent_ty, ty),
             Self::Ref => matches_ref(cx, hir::Mutability::Not, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty),
             Self::RefMut => matches_ref(cx, hir::Mutability::Mut, parent_ty, ty),
             Self::No => ty != parent_ty,

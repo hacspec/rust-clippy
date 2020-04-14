@@ -80,15 +80,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
 
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id) {
+        if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
             return;
         }
 
-        let mir = cx.tcx.optimized_mir(def_id);
+        let mir = cx.tcx.optimized_mir(def_id.to_def_id());
         let mir_read_only = mir.unwrap_read_only();
 
         let maybe_storage_live_result = MaybeStorageLive
-            .into_engine(cx.tcx, mir, def_id)
+            .into_engine(cx.tcx, mir, def_id.to_def_id())
             .iterate_to_fixpoint()
             .into_results_cursor(mir);
         let mut possible_borrower = {
@@ -341,6 +341,9 @@ fn base_local_and_movability<'tcx>(
     let mut deref = false;
     // Accessing a field of an ADT that has `Drop`. Moving the field out will cause E0509.
     let mut field = false;
+    // If projection is a slice index then clone can be removed only if the
+    // underlying type implements Copy
+    let mut slice = false;
 
     let PlaceRef { local, mut projection } = place.as_ref();
     while let [base @ .., elem] = projection {
@@ -348,9 +351,11 @@ fn base_local_and_movability<'tcx>(
         deref |= matches!(elem, mir::ProjectionElem::Deref);
         field |= matches!(elem, mir::ProjectionElem::Field(..))
             && has_drop(cx, mir::Place::ty_from(local, projection, &mir.local_decls, cx.tcx).ty);
+        slice |= matches!(elem, mir::ProjectionElem::Index(..))
+            && !is_copy(cx, mir::Place::ty_from(local, projection, &mir.local_decls, cx.tcx).ty);
     }
 
-    Some((local, deref || field))
+    Some((local, deref || field || slice))
 }
 
 struct LocalUseVisitor {

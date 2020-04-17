@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
@@ -384,7 +384,7 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                    } else if cx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id) {
+                    } else if cx.tcx.is_diagnostic_item(sym!(vec_type), def_id) {
                         if_chain! {
                             // Get the _ part of Vec<_>
                             if let Some(ref last) = last_path_segment(qpath).args;
@@ -420,7 +420,7 @@ impl Types {
                                 return; // don't recurse into the type
                             }
                         }
-                    } else if match_def_path(cx, def_id, &paths::OPTION) {
+                    } else if cx.tcx.is_diagnostic_item(sym!(option_type), def_id) {
                         if match_type_parameter(cx, qpath, &paths::OPTION).is_some() {
                             span_lint(
                                 cx,
@@ -608,17 +608,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
                 if higher::is_from_for_desugar(local) {
                     return;
                 }
-                span_lint_and_then(cx, LET_UNIT_VALUE, stmt.span, "this let-binding has unit value", |db| {
-                    if let Some(expr) = &local.init {
-                        let snip = snippet_with_macro_callsite(cx, expr.span, "()");
-                        db.span_suggestion(
-                            stmt.span,
-                            "omit the `let` binding",
-                            format!("{};", snip),
-                            Applicability::MachineApplicable, // snippet
-                        );
-                    }
-                });
+                span_lint_and_then(
+                    cx,
+                    LET_UNIT_VALUE,
+                    stmt.span,
+                    "this let-binding has unit value",
+                    |diag| {
+                        if let Some(expr) = &local.init {
+                            let snip = snippet_with_macro_callsite(cx, expr.span, "()");
+                            diag.span_suggestion(
+                                stmt.span,
+                                "omit the `let` binding",
+                                format!("{};", snip),
+                                Applicability::MachineApplicable, // snippet
+                            );
+                        }
+                    },
+                );
             }
         }
     }
@@ -786,7 +792,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                             "passing a unit value to a function",
                             "if you intended to pass a unit value, use a unit literal instead",
                             "()".to_string(),
-                            Applicability::MachineApplicable,
+                            Applicability::MaybeIncorrect,
                         );
                     }
                 }
@@ -1712,11 +1718,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
                     CHAR_LIT_AS_U8,
                     expr.span,
                     "casting a character literal to `u8` truncates",
-                    |db| {
-                        db.note("`char` is four bytes wide, but `u8` is a single byte");
+                    |diag| {
+                        diag.note("`char` is four bytes wide, but `u8` is a single byte");
 
                         if c.is_ascii() {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 expr.span,
                                 "use a byte literal instead",
                                 format!("b{}", snippet),
@@ -2182,7 +2188,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
 
         fn suggestion<'a, 'tcx>(
             cx: &LateContext<'a, 'tcx>,
-            db: &mut DiagnosticBuilder<'_>,
+            diag: &mut DiagnosticBuilder<'_>,
             generics_span: Span,
             generics_suggestion_span: Span,
             target: &ImplicitHasherType<'_>,
@@ -2197,7 +2203,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             };
 
             multispan_sugg(
-                db,
+                diag,
                 "consider adding a type parameter".to_string(),
                 vec![
                     (
@@ -2222,7 +2228,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             );
 
             if !vis.suggestions.is_empty() {
-                multispan_sugg(db, "...and use generic constructor".into(), vis.suggestions);
+                multispan_sugg(diag, "...and use generic constructor".into(), vis.suggestions);
             }
         }
 
@@ -2268,8 +2274,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                             "impl for `{}` should be generalized over different hashers",
                             target.type_name()
                         ),
-                        move |db| {
-                            suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
+                        move |diag| {
+                            suggestion(cx, diag, generics.span, generics_suggestion_span, target, ctr_vis);
                         },
                     );
                 }
@@ -2306,8 +2312,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                                 "parameter of type `{}` should be generalized over different hashers",
                                 target.type_name()
                             ),
-                            move |db| {
-                                suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
+                            move |diag| {
+                                suggestion(cx, diag, generics.span, generics_suggestion_span, target, ctr_vis);
                             },
                         );
                     }

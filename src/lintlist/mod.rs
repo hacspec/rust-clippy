@@ -529,6 +529,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "loops",
     },
     Lint {
+        name: "explicit_deref_methods",
+        group: "pedantic",
+        desc: "Explicit use of deref or deref_mut method while not in a method chain.",
+        deprecation: None,
+        module: "dereference",
+    },
+    Lint {
         name: "explicit_into_iter_loop",
         group: "pedantic",
         desc: "for-looping over `_.into_iter()` when `_` would do",
@@ -860,7 +867,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "integer_arithmetic",
         group: "restriction",
-        desc: "any integer arithmetic statement",
+        desc: "any integer arithmetic expression which could overflow or panic",
         deprecation: None,
         module: "arithmetic",
     },
@@ -954,6 +961,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "unclear name",
         deprecation: None,
         module: "non_expressive_names",
+    },
+    Lint {
+        name: "large_const_arrays",
+        group: "perf",
+        desc: "large non-scalar const array may cause performance overhead",
+        deprecation: None,
+        module: "large_const_arrays",
     },
     Lint {
         name: "large_digit_groups",

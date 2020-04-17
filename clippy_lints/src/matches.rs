@@ -3,10 +3,10 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable, is_wild,
-    match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet, snippet_block,
-    snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
-    walk_ptrs_ty,
+    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
+    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet,
+    snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -389,6 +389,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 
     fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>) {
         if_chain! {
+            if !in_external_macro(cx.sess(), local.span);
+            if !in_macro(local.span);
             if let Some(ref expr) = local.init;
             if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.kind;
             if arms.len() == 1 && arms[0].guard.is_none();
@@ -423,6 +425,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
         if_chain! {
+            if !in_external_macro(cx.sess(), pat.span);
+            if !in_macro(pat.span);
             if let PatKind::Struct(ref qpath, fields, true) = pat.kind;
             if let QPath::Resolved(_, ref path) = qpath;
             if let Some(def_id) = path.res.opt_def_id();
@@ -565,7 +569,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
             MATCH_BOOL,
             expr.span,
             "you seem to be trying to match on a boolean expression",
-            move |db| {
+            move |diag| {
                 if arms.len() == 2 {
                     // no guards
                     let exprs = if let PatKind::Lit(ref arm_bool) = arms[0].pat.kind {
@@ -607,7 +611,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
                         };
 
                         if let Some(sugg) = sugg {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 expr.span,
                                 "consider using an `if`/`else` expression",
                                 sugg,
@@ -642,7 +646,7 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
 
 fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
-    if match_type(cx, ex_ty, &paths::RESULT) {
+    if is_type_diagnostic_item(cx, ex_ty, sym!(result_type)) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {
                 let path_str = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false));
@@ -813,9 +817,9 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>
             }
         }));
 
-        span_lint_and_then(cx, MATCH_REF_PATS, expr.span, title, |db| {
+        span_lint_and_then(cx, MATCH_REF_PATS, expr.span, title, |diag| {
             if !expr.span.from_expansion() {
-                multispan_sugg(db, msg.to_owned(), suggs);
+                multispan_sugg(diag, msg.to_owned(), suggs);
             }
         });
     }

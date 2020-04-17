@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
         } = item.kind
         {
             for assoc_item in items {
-                if let hir::AssocItemKind::Method { has_self: false } = assoc_item.kind {
+                if let hir::AssocItemKind::Fn { has_self: false } = assoc_item.kind {
                     let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
                     if in_external_macro(cx.sess(), impl_item.span) {
                         return;
@@ -168,8 +168,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                 "you should consider deriving a `Default` implementation for `{}`",
                                                 self_ty
                                             ),
-                                            |db| {
-                                                db.suggest_item_with_attr(
+                                            |diag| {
+                                                diag.suggest_item_with_attr(
                                                     cx,
                                                     sp,
                                                     "try this",
@@ -187,8 +187,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                 "you should consider adding a `Default` implementation for `{}`",
                                                 self_ty
                                             ),
-                                            |db| {
-                                                db.suggest_prepend_item(
+                                            |diag| {
+                                                diag.suggest_prepend_item(
                                                     cx,
                                                     item.span,
                                                     "try this",

@@ -9,7 +9,6 @@ use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual swapping.
@@ -141,9 +140,9 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block<'_>) {
                     MANUAL_SWAP,
                     span,
                     &format!("this looks like you are swapping{} manually", what),
-                    |db| {
+                    |diag| {
                         if !sugg.is_empty() {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 span,
                                 "try",
                                 sugg,
@@ -151,7 +150,7 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block<'_>) {
                             );
 
                             if replace {
-                                db.note("or maybe you should use `std::mem::replace`?");
+                                diag.note("or maybe you should use `std::mem::replace`?");
                             }
                         }
                     }
@@ -199,7 +198,7 @@ fn check_for_slice<'a>(cx: &LateContext<'_, '_>, lhs1: &'a Expr<'_>, lhs2: &'a E
 
                 if matches!(ty.kind, ty::Slice(_))
                     || matches!(ty.kind, ty::Array(_, _))
-                    || is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type"))
+                    || is_type_diagnostic_item(cx, ty, sym!(vec_type))
                     || match_type(cx, ty, &paths::VEC_DEQUE)
                 {
                     return Slice::Swappable(lhs1, idx1, idx2);
@@ -243,9 +242,9 @@ fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block<'_>) {
                                    ALMOST_SWAPPED,
                                    span,
                                    &format!("this looks like you are trying to swap{}", what),
-                                   |db| {
+                                   |diag| {
                                        if !what.is_empty() {
-                                           db.span_suggestion(
+                                           diag.span_suggestion(
                                                span,
                                                "try",
                                                format!(
@@ -255,7 +254,7 @@ fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block<'_>) {
                                                ),
                                                Applicability::MaybeIncorrect,
                                            );
-                                           db.note("or maybe you should use `std::mem::replace`?");
+                                           diag.note("or maybe you should use `std::mem::replace`?");
                                        }
                                    });
             }

@@ -218,12 +218,14 @@ mod floating_point_arithmetic;
 mod format;
 mod formatting;
 mod functions;
+mod future_not_send;
 mod get_last_with_len;
 mod identity_conversion;
 mod identity_op;
 mod if_let_some_result;
 mod if_not_else;
 mod implicit_return;
+mod implicit_saturating_sub;
 mod indexing_slicing;
 mod infinite_iter;
 mod inherent_impl;
@@ -570,6 +572,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &functions::NOT_UNSAFE_PTR_ARG_DEREF,
         &functions::TOO_MANY_ARGUMENTS,
         &functions::TOO_MANY_LINES,
+        &future_not_send::FUTURE_NOT_SEND,
         &get_last_with_len::GET_LAST_WITH_LEN,
         &hacspec::HACSPEC,
         &hacspec_macros::HACSPEC_MACROS,
@@ -578,6 +581,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &if_let_some_result::IF_LET_SOME_RESULT,
         &if_not_else::IF_NOT_ELSE,
         &implicit_return::IMPLICIT_RETURN,
+        &implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
         &indexing_slicing::INDEXING_SLICING,
         &indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         &infinite_iter::INFINITE_ITER,
@@ -892,6 +896,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box unicode::Unicode);
     store.register_late_pass(|| box strings::StringAdd);
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
+    store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
     store.register_late_pass(|| box methods::Methods);
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box shadow::Shadow);
@@ -1054,6 +1059,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
     store.register_late_pass(|| box unnamed_address::UnnamedAddress);
     store.register_late_pass(|| box dereference::Dereferencing);
+    store.register_late_pass(|| box future_not_send::FutureNotSend);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1119,6 +1125,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&hacspec::HACSPEC),
         LintId::of(&hacspec_macros::HACSPEC_MACROS),
         LintId::of(&if_not_else::IF_NOT_ELSE),
+        LintId::of(&implicit_saturating_sub::IMPLICIT_SATURATING_SUB),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(&items_after_statements::ITEMS_AFTER_STATEMENTS),
         LintId::of(&large_stack_arrays::LARGE_STACK_ARRAYS),
@@ -1700,6 +1707,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
         LintId::of(&floating_point_arithmetic::IMPRECISE_FLOPS),
         LintId::of(&floating_point_arithmetic::SUBOPTIMAL_FLOPS),
+        LintId::of(&future_not_send::FUTURE_NOT_SEND),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(&mutex_atomic::MUTEX_INTEGER),

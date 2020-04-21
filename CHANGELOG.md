@@ -1288,6 +1288,7 @@ Released 2018-09-13
 [`hacspec_macros`]: https://rust-lang.github.io/rust-clippy/master/index.html#hacspec_macros
 [`identity_conversion`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_conversion
 [`identity_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_op
+[`if_let_mutex`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_mutex
 [`if_let_redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_redundant_pattern_matching
 [`if_let_some_result`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_some_result
 [`if_not_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_not_else
@@ -1526,6 +1527,7 @@ Released 2018-09-13
 [`unneeded_wildcard_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#unneeded_wildcard_pattern
 [`unreachable`]: https://rust-lang.github.io/rust-clippy/master/index.html#unreachable
 [`unreadable_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#unreadable_literal
+[`unsafe_derive_deserialize`]: https://rust-lang.github.io/rust-clippy/master/index.html#unsafe_derive_deserialize
 [`unsafe_removed_from_name`]: https://rust-lang.github.io/rust-clippy/master/index.html#unsafe_removed_from_name
 [`unsafe_vector_initialization`]: https://rust-lang.github.io/rust-clippy/master/index.html#unsafe_vector_initialization
 [`unseparated_literal_suffix`]: https://rust-lang.github.io/rust-clippy/master/index.html#unseparated_literal_suffix

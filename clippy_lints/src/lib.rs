@@ -222,6 +222,7 @@ mod future_not_send;
 mod get_last_with_len;
 mod identity_conversion;
 mod identity_op;
+mod if_let_mutex;
 mod if_let_some_result;
 mod if_not_else;
 mod implicit_return;
@@ -524,6 +525,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &dereference::EXPLICIT_DEREF_METHODS,
         &derive::DERIVE_HASH_XOR_EQ,
         &derive::EXPL_IMPL_CLONE_ON_COPY,
+        &derive::UNSAFE_DERIVE_DESERIALIZE,
         &doc::DOC_MARKDOWN,
         &doc::MISSING_ERRORS_DOC,
         &doc::MISSING_SAFETY_DOC,
@@ -578,6 +580,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &hacspec_macros::HACSPEC_MACROS,
         &identity_conversion::IDENTITY_CONVERSION,
         &identity_op::IDENTITY_OP,
+        &if_let_mutex::IF_LET_MUTEX,
         &if_let_some_result::IF_LET_SOME_RESULT,
         &if_not_else::IF_NOT_ELSE,
         &implicit_return::IMPLICIT_RETURN,
@@ -844,6 +847,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unwrap::UNNECESSARY_UNWRAP,
         &use_self::USE_SELF,
         &utils::internal_lints::CLIPPY_LINTS_INTERNAL,
+        &utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
         &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
         &utils::internal_lints::DEFAULT_LINT,
         &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
@@ -1060,6 +1064,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box unnamed_address::UnnamedAddress);
     store.register_late_pass(|| box dereference::Dereferencing);
     store.register_late_pass(|| box future_not_send::FutureNotSend);
+    store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
+    store.register_late_pass(|| box if_let_mutex::IfLetMutex);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1112,6 +1118,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&default_trait_access::DEFAULT_TRAIT_ACCESS),
         LintId::of(&dereference::EXPLICIT_DEREF_METHODS),
         LintId::of(&derive::EXPL_IMPL_CLONE_ON_COPY),
+        LintId::of(&derive::UNSAFE_DERIVE_DESERIALIZE),
         LintId::of(&doc::DOC_MARKDOWN),
         LintId::of(&doc::MISSING_ERRORS_DOC),
         LintId::of(&empty_enum::EMPTY_ENUM),
@@ -1173,6 +1180,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
 
     store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
         LintId::of(&utils::internal_lints::CLIPPY_LINTS_INTERNAL),
+        LintId::of(&utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS),
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
         LintId::of(&utils::internal_lints::DEFAULT_LINT),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
@@ -1239,6 +1247,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&get_last_with_len::GET_LAST_WITH_LEN),
         LintId::of(&identity_conversion::IDENTITY_CONVERSION),
         LintId::of(&identity_op::IDENTITY_OP),
+        LintId::of(&if_let_mutex::IF_LET_MUTEX),
         LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
         LintId::of(&indexing_slicing::OUT_OF_BOUNDS_INDEXING),
         LintId::of(&infinite_iter::INFINITE_ITER),
@@ -1626,6 +1635,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&erasing_op::ERASING_OP),
         LintId::of(&formatting::POSSIBLE_MISSING_COMMA),
         LintId::of(&functions::NOT_UNSAFE_PTR_ARG_DEREF),
+        LintId::of(&if_let_mutex::IF_LET_MUTEX),
         LintId::of(&indexing_slicing::OUT_OF_BOUNDS_INDEXING),
         LintId::of(&infinite_iter::INFINITE_ITER),
         LintId::of(&inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY),

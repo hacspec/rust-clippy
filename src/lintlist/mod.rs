@@ -746,6 +746,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "identity_op",
     },
     Lint {
+        name: "if_let_mutex",
+        group: "correctness",
+        desc: "locking a `Mutex` in an `if let` block can cause deadlocks",
+        deprecation: None,
+        module: "if_let_mutex",
+    },
+    Lint {
         name: "if_let_some_result",
         group: "style",
         desc: "usage of `ok()` in `if let Some(pat)` statements is unnecessary, match on `Ok(pat)` instead",
@@ -2347,6 +2354,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "long integer literal without underscores",
         deprecation: None,
         module: "literal_representation",
+    },
+    Lint {
+        name: "unsafe_derive_deserialize",
+        group: "pedantic",
+        desc: "deriving `serde::Deserialize` on a type that has methods using `unsafe`",
+        deprecation: None,
+        module: "derive",
     },
     Lint {
         name: "unsafe_removed_from_name",

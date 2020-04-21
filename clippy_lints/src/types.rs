@@ -343,6 +343,7 @@ impl Types {
                                 BOX_VEC,
                                 hir_ty.span,
                                 "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                                None,
                                 "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
                             );
                             return; // don't recurse into the type
@@ -437,6 +438,7 @@ impl Types {
                             LINKEDLIST,
                             hir_ty.span,
                             "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                            None,
                             "a `VecDeque` might work",
                         );
                         return; // don't recurse into the type
@@ -531,11 +533,12 @@ impl Types {
                         } else {
                             format!("{} ", lt.name.ident().as_str())
                         };
-                        let mutopt = if mut_ty.mutbl == Mutability::Mut {
-                            "mut "
-                        } else {
-                            ""
-                        };
+
+                        if mut_ty.mutbl == Mutability::Mut {
+                            // Ignore `&mut Box<T>` types; see issue #2907 for
+                            // details.
+                            return;
+                        }
                         let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
@@ -544,9 +547,8 @@ impl Types {
                             "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
                             "try",
                             format!(
-                                "&{}{}{}",
+                                "&{}{}",
                                 ltopt,
-                                mutopt,
                                 &snippet_with_applicability(cx, inner.span, "..", &mut applicability)
                             ),
                             Applicability::Unspecified,
@@ -1900,7 +1902,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
                         conclusion
                     );
 
-                    span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, &help);
+                    span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, &help);
                 }
             }
         }

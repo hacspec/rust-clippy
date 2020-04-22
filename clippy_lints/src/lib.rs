@@ -163,6 +163,11 @@ macro_rules! declare_clippy_lint {
             $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
         }
     };
+    { $(#[$attr:meta])* pub $name:tt, hacspec_lang, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
+    };
 }
 
 mod consts;
@@ -1054,8 +1059,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let max_struct_bools = conf.max_struct_bools;
     store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
-    // store.register_early_pass(|| box hacspec::Hacspec);
-    // store.register_early_pass(|| box hacspec_macros::HacspecMacros);
     store.register_late_pass(|| box hacspec::Hacspec);
     store.register_late_pass(|| box wildcard_imports::WildcardImports);
     store.register_early_pass(|| box macro_use::MacroUseImports);
@@ -1129,8 +1132,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&excessive_bools::STRUCT_EXCESSIVE_BOOLS),
         LintId::of(&functions::MUST_USE_CANDIDATE),
         LintId::of(&functions::TOO_MANY_LINES),
-        LintId::of(&hacspec::HACSPEC),
-        LintId::of(&hacspec_macros::HACSPEC_MACROS),
         LintId::of(&if_not_else::IF_NOT_ELSE),
         LintId::of(&implicit_saturating_sub::IMPLICIT_SATURATING_SUB),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
@@ -1726,6 +1727,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&redundant_pub_crate::REDUNDANT_PUB_CRATE),
         LintId::of(&transmute::USELESS_TRANSMUTE),
         LintId::of(&use_self::USE_SELF),
+    ]);
+
+    store.register_group(true, "clippy::hacspec_lang", Some("clippy_hacspec_lang"), vec![
+        LintId::of(&hacspec::HACSPEC),
+        LintId::of(&hacspec_macros::HACSPEC_MACROS),
     ]);
 }
 

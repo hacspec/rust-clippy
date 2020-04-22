@@ -15,7 +15,7 @@ pub enum Level {
     Deny,
 }
 
-pub const LINT_LEVELS: [(&str, Level); 8] = [
+pub const LINT_LEVELS: [(&str, Level); 9] = [
     ("correctness", Level::Deny),
     ("style", Level::Warn),
     ("complexity", Level::Warn),
@@ -24,4 +24,5 @@ pub const LINT_LEVELS: [(&str, Level); 8] = [
     ("pedantic", Level::Allow),
     ("nursery", Level::Allow),
     ("cargo", Level::Allow),
+    ("hacspec_lang", Level::Allow),
 ];

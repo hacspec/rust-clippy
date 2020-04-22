@@ -225,6 +225,8 @@ mod formatting;
 mod functions;
 mod future_not_send;
 mod get_last_with_len;
+mod hacspec;
+mod hacspec_macros;
 mod identity_conversion;
 mod identity_op;
 mod if_let_mutex;
@@ -331,9 +333,6 @@ mod wildcard_dependencies;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
-// hacspec part
-mod hacspec;
-mod hacspec_macros;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 pub use crate::utils::conf::Conf;

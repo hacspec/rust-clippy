@@ -719,15 +719,15 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "hacspec",
-        group: "pedantic",
+        group: "hacspec_lang",
         desc: "Checks whether the code belongs to the hacspec subset of Rust",
         deprecation: None,
         module: "hacspec",
     },
     Lint {
         name: "hacspec_macros",
-        group: "pedantic",
-        desc: "default lint description",
+        group: "hacspec_lang",
+        desc: "",
         deprecation: None,
         module: "hacspec_macros",
     },

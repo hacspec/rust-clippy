@@ -1,5 +1,5 @@
 //! Checks syntax of programs written in the 'hacspec' subset of rust
-//! See https://github.com/hacspec/hacspec-rust/blob/franziskus-dev/LANGUAGE.md for the (BNF ?) syntax
+//! See <https://github.com/hacspec/hacspec-rust/blob/franziskus-dev/LANGUAGE.md> for the (BNF ?) syntax
 //!
 //!
 
@@ -20,7 +20,7 @@ use rustc_span::{
 
 declare_clippy_lint! {
     pub HACSPEC,
-    nursery, //pedantic, corectness or restriction, but shouldn't interfere with other lints ? or shipped completely separately
+    hacspec_lang,
     "Checks whether the code belongs to the hacspec subset of Rust"
 }
 

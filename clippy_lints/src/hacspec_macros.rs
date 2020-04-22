@@ -8,7 +8,7 @@ use rustc_ast::{
 };
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// **What it does:** Hacpsec sub-language : checks macros invocations and adds type declarations to the authorized types
     ///
     /// **Why is this bad?**
     ///
@@ -20,8 +20,8 @@ declare_clippy_lint! {
     /// // example code
     /// ```
     pub HACSPEC_MACROS,
-    nursery, //pedantic, corectness or restriction, but shouldn't interfere with other lints ? or shipped completely separately
-    "default lint description"
+    hacspec_lang,
+    ""
 }
 
 #[derive(Default)]
@@ -82,7 +82,7 @@ impl EarlyLintPass for HacspecMacros {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &MacCall) {
         if allowed_path(ALLOWED_MACRO_TYPE_DECL, &mac.path.segments) {
             let mut flag = false;
-            &mac.args.inner_tokens().map_enumerated(
+            let _ = &mac.args.inner_tokens().map_enumerated(
                 |i, tk_tr| {
                     if i == 0 {
                         if let TokenTree::Token( Token { kind:TokenKind::Ident(name, _b), span: _ }) = tk_tr {

@@ -23,7 +23,7 @@ fn clippy_driver_path() -> PathBuf {
     if let Some(path) = option_env!("CLIPPY_DRIVER_PATH") {
         PathBuf::from(path)
     } else {
-        cargo::TARGET_LIB.join("clippy-driver")
+        cargo::TARGET_LIB.join("hacspec-driver")
     }
 }
 

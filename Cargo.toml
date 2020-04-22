@@ -19,12 +19,12 @@ edition = "2018"
 publish = false
 
 [[bin]]
-name = "cargo-clippy"
+name = "cargo-hacspec"
 test = false
 path = "src/main.rs"
 
 [[bin]]
-name = "clippy-driver"
+name = "hacspec-driver"
 path = "src/driver.rs"
 
 [dependencies]

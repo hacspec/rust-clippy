@@ -118,7 +118,7 @@ impl ClippyCmd {
     fn path() -> PathBuf {
         let mut path = env::current_exe()
             .expect("current executable path invalid")
-            .with_file_name("clippy-driver");
+            .with_file_name("hacspec-driver");
 
         if cfg!(windows) {
             path.set_extension("exe");

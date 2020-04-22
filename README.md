@@ -1,3 +1,26 @@
+# Hacspec fork of Clippy (WIP)
+
+This clippy version gives you a `cargo hacspec` subcommand identical to clippy, except for the additional `hacspec_lang` lint category.
+The reason for the different naming is to avoid conflicts with the official clippy version for the time being.
+
+## Usage
+
+To install it, you can compile it with
+
+```terminal
+cargo +nightly install --path . --force
+```
+
+Currently, you can check the spec-examples part of the hacspec library by doing
+```terminal
+# ignoring the dependencies
+cargo +nightly hacspec -p hacspec -p abstract_integers -p secret_integers -- -A clippy::all
+# actually check the syntax of the hacspec examples
+cargo +nightly hacspec -p hacspec-examples -- -D clippy::hacspec_lang
+```
+
+(original README : )
+
 # Clippy
 
 [![Clippy Test](https://github.com/rust-lang/rust-clippy/workflows/Clippy%20Test/badge.svg?branch=auto&event=push)](https://github.com/rust-lang/rust-clippy/actions?query=workflow%3A%22Clippy+Test%22+event%3Apush+branch%3Aauto)

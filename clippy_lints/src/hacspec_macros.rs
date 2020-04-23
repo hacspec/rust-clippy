@@ -39,9 +39,9 @@ const ALLOWED_MACRO_TYPE_DECL: &[&[&str]] = &[
     &["public_bytes"],
     &["public_array"],
     &["poly"],
-    &["field_integer"],
-    //soon to be replaced by
-    // nat_mod
+    &["nat_mod"],
+    &["public_nat_mod"],
+    &["abstract_unsigned_public_integer"],
 ];
 
 const ALLOWED_MACROS_MISC : &[&[&str]] = &[
@@ -49,8 +49,13 @@ const ALLOWED_MACROS_MISC : &[&[&str]] = &[
     &["secret_array"],
     &["secret_bytes"],
     &["assert"],
+    &["assert_ne"],
+    &["debug_assert"],
     &["assert_bytes_eq"],
     &["assert_eq"],
+    &["assert_secret_array_eq"],
+
+    &["println"],
 ];
 
 fn allowed_path(authorized_macros: &[&[&str]], queried_use: &[PathSegment]) -> bool {
@@ -64,7 +69,7 @@ fn allowed_path(authorized_macros: &[&[&str]], queried_use: &[PathSegment]) -> b
     })
 }
 
-// not really nice for code reuse
+// same as above except for argument, not really nice for code reuse
 impl HacspecMacros {
     fn check_added_macro(&self, queried_use: &[PathSegment]) -> bool {
         self.added_macros.iter().any(|allowed_use| {

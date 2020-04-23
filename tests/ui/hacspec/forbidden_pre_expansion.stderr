@@ -1,0 +1,20 @@
+error: FORBIDDEN MACRO
+  --> $DIR/forbidden_pre_expansion.rs:20:22
+   |
+LL |     let v:Vec<u32> = vec![0,1,2];
+   |                      ^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/forbidden_pre_expansion.rs:3:9
+   |
+LL | #![deny(clippy::hacspec_macros)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: FORBIDDEN MACRO
+  --> $DIR/forbidden_pre_expansion.rs:23:5
+   |
+LL |     dbg!("forbidden");
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

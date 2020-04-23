@@ -7,19 +7,19 @@ extern crate rand;
 // Import hacspec and all needed definitions.
 use hacspec::prelude::*;
 
-const ROUNDS:usize = 24;
-pub const SHA3224_RATE:usize  = 144;
-pub const SHA3256_RATE:usize  = 136;
-pub const SHA3384_RATE:usize  = 104;
-pub const SHA3512_RATE:usize  = 72;
-pub const SHAKE128_RATE:usize = 168;
-pub const SHAKE256_RATE:usize = 136;
+const ROUNDS: usize = 24;
+pub const SHA3224_RATE: usize = 144;
+pub const SHA3256_RATE: usize = 136;
+pub const SHA3384_RATE: usize = 104;
+pub const SHA3512_RATE: usize = 72;
+pub const SHAKE128_RATE: usize = 168;
+pub const SHAKE256_RATE: usize = 136;
 
-pub enum ShaRate{
-    Sha3224Rate  = 144,
-    Sha3256Rate  = 136,
-    Sha3384Rate  = 104,
-    Sha3512Rate  = 72,
+pub enum ShaRate {
+    Sha3224Rate = 144,
+    Sha3256Rate = 136,
+    Sha3384Rate = 104,
+    Sha3512Rate = 72,
 }
 
 array!(State, 25, U64);
@@ -38,14 +38,13 @@ const ROUNDCONSTANTS:[u64;ROUNDS] = [
     0x8000_0000_8000_8081, 0x8000_0000_0000_8080, 0x0000_0000_8000_0001, 0x8000_0000_8000_8008
 ];
 
-const ROTC:[u32;25] = [
+const ROTC: [u32; 25] = [
     0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14,
 ];
 
-const PI:[usize;25] = [
-    0, 6, 12, 18, 24, 3, 9, 10, 16, 22, 1, 7, 13, 19, 20, 4, 5, 11, 17, 23, 2, 8, 14, 15, 21
+const PI: [usize; 25] = [
+    0, 6, 12, 18, 24, 3, 9, 10, 16, 22, 1, 7, 13, 19, 20, 4, 5, 11, 17, 23, 2, 8, 14, 15, 21,
 ];
-
 
 fn theta(s: State) -> State {
     let mut s = s;
@@ -54,7 +53,7 @@ fn theta(s: State) -> State {
         b[i] = s[i] ^ s[i + 5] ^ s[i + 10] ^ s[i + 15] ^ s[i + 20];
     }
     for i in 0..5 {
-        let u:U64 = b[(i + 1) % 5];
+        let u: U64 = b[(i + 1) % 5];
         let t = b[(i + 4) % 5] ^ u.rotate_left(1);
         for j in 0..5 {
             s[5 * j + i] ^= t;
@@ -66,7 +65,7 @@ fn theta(s: State) -> State {
 fn rho(s: State) -> State {
     let mut s = s;
     for i in 0..25 {
-        let u:U64 = s[i];
+        let u: U64 = s[i];
         s[i] = u.rotate_left(ROTC[i]);
     }
     s
@@ -85,17 +84,17 @@ fn chi(s: State) -> State {
     let mut b = Row::new();
     for i in 0..5 {
         for j in 0..5 {
-            b[j] = s[5*i+j];
+            b[j] = s[5 * i + j];
         }
         for j in 0..5 {
-            let u:U64 = b[(j + 1) % 5];
-            s[5*i+j] ^= (!u) & b[(j + 2) % 5];
+            let u: U64 = b[(j + 1) % 5];
+            s[5 * i + j] ^= (!u) & b[(j + 2) % 5];
         }
     }
     s
 }
 
-fn iota(s: State, rndconst: u64) -> State { 
+fn iota(s: State, rndconst: u64) -> State {
     let mut s = s;
     s[0] ^= U64::classify(rndconst);
     s
@@ -103,7 +102,7 @@ fn iota(s: State, rndconst: u64) -> State {
 
 fn keccakf1600(s: State) -> State {
     let mut s = s;
-    for i in 0..ROUNDS{
+    for i in 0..ROUNDS {
         s = theta(s);
         s = rho(s);
         s = pi(s);
@@ -117,7 +116,7 @@ fn absorb_block(s: State, block: ByteSeq) -> State {
     let mut s = s;
     for (i, b) in block.iter().enumerate() {
         let w = i >> 3;
-        let o = 8*((i & 7) as u32);
+        let o = 8 * ((i & 7) as u32);
         s[w] ^= U64::from(*b) << o;
     }
     keccakf1600(s)
@@ -129,10 +128,10 @@ fn squeeze(s: State, nbytes: usize, rate: usize) -> ByteSeq {
     for i in 0..nbytes {
         let pos = i % rate;
         let w = pos >> 3;
-        let o = 8*((pos & 7) as u32);
+        let o = 8 * ((pos & 7) as u32);
         let b = (s[w] >> o) & U64::classify(0xffu64);
         out[i] = b.into();
-        if ((i+1) % rate) == 0 {
+        if ((i + 1) % rate) == 0 {
             s = keccakf1600(s);
         }
     }
@@ -141,18 +140,17 @@ fn squeeze(s: State, nbytes: usize, rate: usize) -> ByteSeq {
 
 fn keccak(rate: usize, data: ByteSeq, p: u8, outbytes: usize) -> ByteSeq {
     let mut buf = ByteSeq::new(rate);
-    let mut s   = State::new();
+    let mut s = State::new();
 
     for (block_len, block) in data.chunks(rate) {
         if block_len == rate {
             s = absorb_block(s, block);
-        }
-        else {
+        } else {
             buf = buf.push(block);
         }
     }
     buf = buf.push(ByteSeq::from_array(&[U8::classify(p)]));
-    buf[rate-1] |= U8::classify(128);
+    buf[rate - 1] |= U8::classify(128);
     s = absorb_block(s, buf);
 
     squeeze(s, outbytes, rate)
@@ -186,7 +184,6 @@ pub fn shake256(data: ByteSeq, outlen: usize) -> ByteSeq {
     keccak(SHAKE256_RATE, data, 0x1f, outlen)
 }
 
-
 #[test]
 fn test_keccakf1600() {
     let s:State = State(secret_array!(U64,[
@@ -208,11 +205,7 @@ fn test_keccakf1600() {
                                       0xf83d27a7f7ec241e]));
     let v = keccakf1600(s);
 
-    assert_secret_array_eq!(c,v,U64);
+    assert_secret_array_eq!(c, v, U64);
 }
 
-
-
-fn main() {
-
-}
+fn main() {}

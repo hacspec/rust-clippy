@@ -3,15 +3,15 @@
 //!
 //!
 
-
 use crate::utils::span_lint;
 //might use crate::utils::higher to look into loops
-use rustc_middle::lint::in_external_macro;
 use rustc_hir::{
-    intravisit, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Mod, Param, Pat,
-    PatKind, Path, PathSegment, Ty, TyKind, StructField,
+    intravisit, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Mod, Param, Pat, PatKind, Path,
+    PathSegment, StructField, Ty, TyKind,
 };
-//use rustc_hir_pretty::id_to_string; //needs the id to be present in the map of the type context, which isn't the case
+use rustc_middle::lint::in_external_macro;
+//use rustc_hir_pretty::id_to_string; //needs the id to be present in the map of the type context,
+// which isn't the case
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{
@@ -27,11 +27,10 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Hacspec => [HACSPEC]);
 
-// explicitely forbidden paths from the standard prelude, only useful for explicit type annotations though
+// explicitely forbidden paths from the standard prelude, only useful for explicit type annotations
+// though
 #[allow(dead_code)]
-const FORBIDDEN_PATHS: &[&[&str]] = &[
-    &["Vec"]
-];
+const FORBIDDEN_PATHS: &[&[&str]] = &[&["Vec"]];
 
 const ALLOWED_PATHS: &[&[&str]] = &[
     &["hacspec"],
@@ -71,29 +70,32 @@ fn allowed_type(typ: &Ty<'_>) -> bool {
 }
 //or use clippy_lints::utils::sym::sym!
 fn path_to_string<'tcx>(path: &'tcx Path<'tcx>) -> String {
-
-   path.segments.iter()
-                .map(|seg| {seg.ident.name.to_ident_string()})
-                .collect::<Vec<String>>()
-            .join(&"::")
+    path.segments
+        .iter()
+        .map(|seg| seg.ident.name.to_ident_string())
+        .collect::<Vec<String>>()
+        .join(&"::")
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
-
     fn check_path(&mut self, cx: &LateContext<'a, 'tcx>, path: &'tcx Path<'tcx>, _: HirId) {
         // Items used in the code are whitelisted
         if in_external_macro(cx.sess(), path.span) {
             return;
         };
         if path.segments.len() == 1 || //TODO what to do about the std prelude (Box, Vec, etc.) ?
-           allowed_path(&path.segments) {
+           allowed_path(&path.segments)
+        {
             // Paths of len 1 correspond to items inside the crate, except when used in imports
             return;
         };
         // redundant for the top-level use statement, might check in the context if we're checking a mod
-        span_lint(cx, HACSPEC, path.span, //"[HACSPEC] Unauthorized path item"
-                               &format!("[HACSPEC] Unauthorized path item {}",path_to_string(path))
-                                                )
+        span_lint(
+            cx,
+            HACSPEC,
+            path.span, //"[HACSPEC] Unauthorized path item"
+            &format!("[HACSPEC] Unauthorized path item {}", path_to_string(path)),
+        )
     }
 
     fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod<'tcx>, span: Span, _: HirId) {
@@ -161,17 +163,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         }
     }
 
-    fn check_struct_field(
-        &mut self,
-        cx: &LateContext<'a, 'tcx>,
-        sf: &'tcx StructField<'tcx>
-    ) {
+    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, sf: &'tcx StructField<'tcx>) {
         // The types of struct (incl. tuples) declaration parameters cannot be references
         if !(allowed_type(sf.ty)) {
             span_lint(cx, HACSPEC, sf.span, &"[HACSPEC] Unsupported type")
         }
     }
-
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'tcx>) {
         if in_external_macro(cx.sess(), item.span) {
@@ -183,9 +180,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
                     span_lint(cx, HACSPEC, item.span, &"[HACSPEC] Unsupported type")
                 }
             },
-            ItemKind::Enum(_, _) | ItemKind::Struct(_, _) |
-            ItemKind::Fn(_, _, _) |
-            ItemKind::ExternCrate(_) | ItemKind::Use(_, _) => (),
+            ItemKind::Enum(_, _)
+            | ItemKind::Struct(_, _)
+            | ItemKind::Fn(_, _, _)
+            | ItemKind::ExternCrate(_)
+            | ItemKind::Use(_, _) => (),
             _ => span_lint(cx, HACSPEC, item.span, &"[HACSPEC] Unauthorized item"),
         }
     }

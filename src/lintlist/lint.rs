@@ -24,5 +24,5 @@ pub const LINT_LEVELS: [(&str, Level); 9] = [
     ("pedantic", Level::Allow),
     ("nursery", Level::Allow),
     ("cargo", Level::Allow),
-    ("hacspec_lang", Level::Allow),
+    ("hacspec_lang", Level::Warn),
 ];

@@ -11,12 +11,13 @@ use hacspec::prelude::*;
 
 // Import aes and gcm
 use super::aes::{
-    self, aes128_ctr_keyblock, aes128_decrypt, aes128_encrypt, aes256_ctr_keyblock, aes256_decrypt,
-    aes256_encrypt, Block,
+    self, aes128_ctr_keyblock, aes128_decrypt, aes128_encrypt, aes256_ctr_keyblock, aes256_decrypt, aes256_encrypt,
+    Block,
 };
 
 use super::gf128::{gmac, Key, Tag};
 
+#[rustfmt::skip]
 fn pad_aad_msg(aad: &ByteSeq, msg: &ByteSeq) -> ByteSeq {
     let laad = aad.len();
     let lmsg = msg.len();
@@ -44,6 +45,7 @@ fn pad_aad_msg(aad: &ByteSeq, msg: &ByteSeq) -> ByteSeq {
     padded_msg
 }
 
+#[rustfmt::skip] //fn_args_layout=Vertical
 pub fn encrypt_aes128(
     key: aes::Key128,
     iv: aes::Nonce,
@@ -63,6 +65,7 @@ pub fn encrypt_aes128(
     (cipher_text, Tag::from_seq(&tag))
 }
 
+#[rustfmt::skip] //fn_args_layout=Vertical
 pub fn encrypt_aes256(
     key: aes::Key256,
     iv: aes::Nonce,

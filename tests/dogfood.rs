@@ -8,7 +8,7 @@ use std::process::Command;
 mod cargo;
 
 lazy_static! {
-    static ref CLIPPY_PATH: PathBuf = cargo::TARGET_LIB.join("cargo-clippy");
+    static ref CLIPPY_PATH: PathBuf = cargo::TARGET_LIB.join("cargo-hacspec");
 }
 
 #[test]

@@ -15,13 +15,6 @@ pub const SHA3512_RATE: usize = 72;
 pub const SHAKE128_RATE: usize = 168;
 pub const SHAKE256_RATE: usize = 136;
 
-pub enum ShaRate {
-    Sha3224Rate = 144,
-    Sha3256Rate = 136,
-    Sha3384Rate = 104,
-    Sha3512Rate = 72,
-}
-
 array!(State, 25, U64);
 array!(Row, 5, U64);
 bytes!(Digest224, 28);
@@ -113,7 +106,7 @@ fn keccakf1600(s: State) -> State {
     s
 }
 
-fn absorb_block(s: State, block: ByteSeq) -> State {
+fn absorb_block(s: State, block: &ByteSeq) -> State {
     let mut s = s;
     for (i, b) in block.iter().enumerate() {
         let w = i >> 3;
@@ -139,49 +132,52 @@ fn squeeze(s: State, nbytes: usize, rate: usize) -> ByteSeq {
     out
 }
 
-fn keccak(rate: usize, data: ByteSeq, p: u8, outbytes: usize) -> ByteSeq {
+fn keccak(rate: usize, data: &ByteSeq, p: u8, outbytes: usize) -> ByteSeq {
     let mut buf = ByteSeq::new(rate);
+    let mut last_block_len = 0;
     let mut s = State::new();
 
-    for (block_len, block) in data.chunks(rate) {
+    for i in 0..data.num_chunks(rate) {
+        let (block_len, block) = data.get_chunk(rate, i);
         if block_len == rate {
-            s = absorb_block(s, block);
+            s = absorb_block(s, &block);
         } else {
-            buf = buf.push(block);
+            buf = buf.update_start(&block);
+            last_block_len = block_len;
         }
     }
-    buf = buf.push(ByteSeq::from_array(&[U8::classify(p)]));
-    buf[rate - 1] |= U8::classify(128);
-    s = absorb_block(s, buf);
+    buf[last_block_len] = U8(p);
+    buf[rate - 1] |= U8(128);
+    s = absorb_block(s, &buf);
 
     squeeze(s, outbytes, rate)
 }
 
-pub fn sha3224(data: ByteSeq) -> Digest224 {
+pub fn sha3224(data: &ByteSeq) -> Digest224 {
     let t = keccak(SHA3224_RATE, data, 0x06, 28);
-    Digest224::from(t)
+    Digest224::from_seq(&t)
 }
 
-pub fn sha3256(data: ByteSeq) -> Digest256 {
+pub fn sha3256(data: &ByteSeq) -> Digest256 {
     let t = keccak(SHA3256_RATE, data, 0x06, 32);
-    Digest256::from(t)
+    Digest256::from_seq(&t)
 }
 
-pub fn sha3384(data: ByteSeq) -> Digest384 {
+pub fn sha3384(data: &ByteSeq) -> Digest384 {
     let t = keccak(SHA3384_RATE, data, 0x06, 48);
-    Digest384::from(t)
+    Digest384::from_seq(&t)
 }
 
-pub fn sha3512(data: ByteSeq) -> Digest512 {
+pub fn sha3512(data: &ByteSeq) -> Digest512 {
     let t = keccak(SHA3512_RATE, data, 0x06, 64);
-    Digest512::from(t)
+    Digest512::from_seq(&t)
 }
 
-pub fn shake128(data: ByteSeq, outlen: usize) -> ByteSeq {
+pub fn shake128(data: &ByteSeq, outlen: usize) -> ByteSeq {
     keccak(SHAKE128_RATE, data, 0x1f, outlen)
 }
 
-pub fn shake256(data: ByteSeq, outlen: usize) -> ByteSeq {
+pub fn shake256(data: &ByteSeq, outlen: usize) -> ByteSeq {
     keccak(SHAKE256_RATE, data, 0x1f, outlen)
 }
 

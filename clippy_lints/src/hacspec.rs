@@ -6,8 +6,8 @@
 use crate::utils::span_lint;
 //might use crate::utils::higher to look into loops
 use rustc_hir::{
-    intravisit, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Mod, Param, Pat, PatKind, Path,
-    PathSegment, StructField, Ty, TyKind,
+    intravisit, BindingAnnotation, Body, Expr, ExprKind, FnDecl, FnRetTy, HirId, Item, ItemKind, Mod, MutTy,
+    Mutability, Param, Pat, PatKind, Path, PathSegment, StructField, Ty, TyKind,
 };
 use rustc_middle::lint::in_external_macro;
 //use rustc_hir_pretty::id_to_string; //needs the id to be present in the map of the type context,
@@ -60,10 +60,25 @@ fn allowed_path(queried_use: &[PathSegment<'_>]) -> bool {
     })
 }
 
-fn allowed_type(typ: &Ty<'_>) -> bool {
+// output type + immutable reference
+fn allowed_input_type(typ: &Ty<'_>) -> bool {
+    allowed_output_type(typ)
+        || match &typ.kind {
+            TyKind::Rptr(
+                _,
+                MutTy {
+                    ty,
+                    mutbl: Mutability::Not,
+                },
+            ) => allowed_output_type(ty),
+            _ => false,
+        }
+}
+
+fn allowed_output_type(typ: &Ty<'_>) -> bool {
     match &typ.kind {
-        TyKind::Array(ref typ, _) => allowed_type(typ),
-        TyKind::Tup(typs) => typs.iter().all(|typ| allowed_type(typ)),
+        TyKind::Array(ref typ, _) => allowed_output_type(typ),
+        TyKind::Tup(typs) => typs.iter().all(|typ| allowed_output_type(typ)),
         TyKind::Path(_) => true,
         _ => false,
     }
@@ -157,15 +172,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         };
         // The types of function parameters cannot be references
         for param in sig.inputs.iter() {
-            if !allowed_type(param) {
+            if !allowed_input_type(param) {
                 span_lint(cx, HACSPEC, param.span, &"[HACSPEC] Unsupported type")
+            }
+        }
+        if let FnRetTy::Return(ty) = sig.output {
+            if !allowed_output_type(ty) {
+                span_lint(cx, HACSPEC, ty.span, &"[HACSPEC] Unsupported type")
             }
         }
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, sf: &'tcx StructField<'tcx>) {
         // The types of struct (incl. tuples) declaration parameters cannot be references
-        if !(allowed_type(sf.ty)) {
+        if !(allowed_output_type(sf.ty)) {
             span_lint(cx, HACSPEC, sf.span, &"[HACSPEC] Unsupported type")
         }
     }
@@ -176,7 +196,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
         }
         match &item.kind {
             ItemKind::TyAlias(ref typ, _) | ItemKind::Const(ref typ, _) => {
-                if !allowed_type(typ) {
+                if !allowed_output_type(typ) {
                     span_lint(cx, HACSPEC, item.span, &"[HACSPEC] Unsupported type")
                 }
             },
@@ -206,7 +226,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Hacspec {
                 }
             },
             ExprKind::Type(_, typ) => {
-                if !allowed_type(typ) {
+                if !allowed_output_type(typ) {
                     span_lint(cx, HACSPEC, expr.span, &"[HACSPEC] Unauthorized type for expression")
                 }
             },

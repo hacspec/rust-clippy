@@ -1,7 +1,7 @@
 error: [HACSPEC] Unauthorized use 
   --> $DIR/forbidden.rs:13:1
    |
-LL | use serde::Serialize; 
+LL | use serde::Serialize;
    | ^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
@@ -13,29 +13,29 @@ LL | #![deny(clippy::hacspec)]
 error: [HACSPEC] Unauthorized use 
   --> $DIR/forbidden.rs:13:5
    |
-LL | use serde::Serialize; 
+LL | use serde::Serialize;
    |     ^^^^^^^^^^^^^^^^
 
 error: [HACSPEC] Unauthorized path item serde::Serialize
   --> $DIR/forbidden.rs:13:5
    |
-LL | use serde::Serialize; 
+LL | use serde::Serialize;
    |     ^^^^^^^^^^^^^^^^
 
 error: [HACSPEC] Unsupported type
-  --> $DIR/forbidden.rs:22:28
+  --> $DIR/forbidden.rs:21:24
    |
-LL |         ForbiddenReference(&'static i32)
-   |                            ^^^^^^^^^^^^
+LL |     ForbiddenReference(&'static i32),
+   |                        ^^^^^^^^^^^^
 
 error: [HACSPEC] Unsupported type
-  --> $DIR/forbidden.rs:25:29
+  --> $DIR/forbidden.rs:25:5
    |
-LL | pub struct ForbiddenStruct {forbidden_reference: &'static i32, y: i32}
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     forbidden_reference: &'static i32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [HACSPEC] Unsupported type
-  --> $DIR/forbidden.rs:29:1
+  --> $DIR/forbidden.rs:30:1
    |
 LL | type ForbiddenPointer<'a> = &'a ForbiddenStruct;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

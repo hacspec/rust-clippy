@@ -29,6 +29,7 @@ bytes!(Digest256, 32);
 bytes!(Digest384, 48);
 bytes!(Digest512, 64);
 
+#[rustfmt::skip]
 const ROUNDCONSTANTS:[u64;ROUNDS] = [
     0x0000_0000_0000_0001, 0x0000_0000_0000_8082, 0x8000_0000_0000_808a, 0x8000_0000_8000_8000,
     0x0000_0000_0000_808b, 0x0000_0000_8000_0001, 0x8000_0000_8000_8081, 0x8000_0000_0000_8009,
@@ -184,6 +185,7 @@ pub fn shake256(data: ByteSeq, outlen: usize) -> ByteSeq {
     keccak(SHAKE256_RATE, data, 0x1f, outlen)
 }
 
+#[rustfmt::skip]
 #[test]
 fn test_keccakf1600() {
     let s:State = State(secret_array!(U64,[

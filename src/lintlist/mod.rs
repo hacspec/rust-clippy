@@ -1153,10 +1153,17 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "match_bool",
-        group: "style",
+        group: "pedantic",
         desc: "a `match` on a boolean expression instead of an `if..else` block",
         deprecation: None,
         module: "matches",
+    },
+    Lint {
+        name: "match_on_vec_items",
+        group: "correctness",
+        desc: "matching on vector elements can panic",
+        deprecation: None,
+        module: "match_on_vec_items",
     },
     Lint {
         name: "match_overlapping_arm",
@@ -1241,6 +1248,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "`min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant",
         deprecation: None,
         module: "minmax",
+    },
+    Lint {
+        name: "mismatched_target_os",
+        group: "correctness",
+        desc: "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`",
+        deprecation: None,
+        module: "attrs",
     },
     Lint {
         name: "misrefactored_assign_op",

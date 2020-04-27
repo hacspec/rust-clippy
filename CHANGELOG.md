@@ -1433,6 +1433,7 @@ Released 2018-09-13
 [`map_flatten`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_flatten
 [`match_as_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_as_ref
 [`match_bool`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_bool
+[`match_on_vec_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_on_vec_items
 [`match_overlapping_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_overlapping_arm
 [`match_ref_pats`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_ref_pats
 [`match_same_arms`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
@@ -1446,6 +1447,7 @@ Released 2018-09-13
 [`mem_replace_with_uninit`]: https://rust-lang.github.io/rust-clippy/master/index.html#mem_replace_with_uninit
 [`min_max`]: https://rust-lang.github.io/rust-clippy/master/index.html#min_max
 [`misaligned_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#misaligned_transmute
+[`mismatched_target_os`]: https://rust-lang.github.io/rust-clippy/master/index.html#mismatched_target_os
 [`misrefactored_assign_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#misrefactored_assign_op
 [`missing_const_for_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn
 [`missing_docs_in_private_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_docs_in_private_items
